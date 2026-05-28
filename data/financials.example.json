@@ -1,0 +1,68 @@
+{
+  "_README": "Copie este arquivo para data/financials.local.json e preencha com os valores reais. As chaves são folder IDs do ClickUp (que você vê na URL do folder). Você pode listar os IDs rodando: GET /space/{SPACE_ID}/folder via API, ou pelo Farol (próxima versão terá uma tela admin).",
+  "901317961132": {
+    "name": "Hamburgueria Plano B",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961136": {
+    "name": "Matheus Augusto",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961166": {
+    "name": "Pizzaria Plano B",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961167": {
+    "name": "Niva Consultoria",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961168": {
+    "name": "Lorac Seguros",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961169": {
+    "name": "TH Seguros",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961170": {
+    "name": "Laser & Co Pantanal",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961171": {
+    "name": "Laser & Co Goiabeiras",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961172": {
+    "name": "LcTech",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961173": {
+    "name": "Monar",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961177": {
+    "name": "Amanda Vanzelotti",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901317961180": {
+    "name": "Da roça Empório",
+    "mrr": 0,
+    "cost": 0
+  },
+  "901318018097": {
+    "name": "GESTLEADS",
+    "mrr": 0,
+    "cost": 0
+  }
+}

@@ -1,0 +1,52 @@
+-- ============================================================
+-- Farol de Clientes — Supabase schema
+-- Cole isso inteiro no SQL Editor do Supabase e rode (Run).
+-- Idempotente: pode rodar várias vezes sem quebrar nada.
+-- ============================================================
+
+-- Tabela principal: financeiro privado por cliente.
+-- A chave (task_id) é o ID da task mestre no ClickUp.
+create table if not exists financials (
+  task_id text primary key,
+  name text,
+  monthly_revenue numeric default 0,
+  contract_start_at date,
+  contract_end_at date,
+  client_since date,
+  -- mrr/cost legados (mock) — mantidos pra compatibilidade
+  mrr numeric default 0,
+  cost numeric default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Trigger pra atualizar updated_at automaticamente
+create or replace function set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_financials_updated_at on financials;
+create trigger trg_financials_updated_at
+  before update on financials
+  for each row execute function set_updated_at();
+
+-- RLS (Row Level Security): por enquanto desabilitado porque a auth do
+-- Farol é via senha única na app (não auth do Supabase). Toda escrita
+-- passa pela API route do Next, que valida o cookie de auth.
+-- Quando migrar pra Supabase Auth (multi-user), habilitar:
+--   alter table financials enable row level security;
+--   create policy "auth users can read" on financials for select to authenticated using (true);
+--   create policy "auth users can write" on financials for all to authenticated using (true);
+alter table financials disable row level security;
+
+-- ============================================================
+-- Pronto. Próximo passo: pegue as credenciais em
+-- Settings → API → Project URL + anon key public,
+-- e cole no .env.local (ou nas env vars da Vercel):
+--   SUPABASE_URL=https://xxxxx.supabase.co
+--   SUPABASE_KEY=eyJhbGciOi...   (anon key)
+-- ============================================================
