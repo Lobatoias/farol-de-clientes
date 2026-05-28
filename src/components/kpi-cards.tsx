@@ -9,9 +9,12 @@ import {
   TrendingDown,
   DollarSign,
   Coins,
+  Clock,
+  Trophy,
 } from "lucide-react";
 import type { Client } from "@/lib/types";
 import { cn, formatBRL } from "@/lib/utils";
+import { calculateLTV, formatTenure } from "@/lib/metrics";
 import { StatusDot } from "./status-badge";
 import { CountUp } from "./count-up";
 
@@ -47,6 +50,10 @@ export function KpiCards({ clients }: KpiCardsProps) {
   // Fallback legado pra mock data
   const mrrTotal = clients.reduce((sum, c) => sum + c.mrr, 0);
   const hasMrr = !hasRevenue && !hasInvestment && mrrTotal > 0;
+
+  // LTV / retenção
+  const ltv = calculateLTV(clients);
+  const hasLTV = ltv.clientsWithData > 0;
 
   return (
     <div className="space-y-3">
@@ -108,7 +115,56 @@ export function KpiCards({ clients }: KpiCardsProps) {
         </div>
       </div>
 
-      {/* Linha 2: Financeiro */}
+      {/* Linha 2: LTV / retenção (só quando há dados) */}
+      {hasLTV && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-fr">
+          <div className="animate-fade-up stagger-1 h-full">
+            <Kpi
+              label="Retenção média"
+              sublabel={`${ltv.clientsWithData}/${total} clientes com dados`}
+              icon={<Clock className="size-4" />}
+              iconTone="primary"
+              value={formatTenure(ltv.avgTenureMonths)}
+            />
+          </div>
+          <div className="animate-fade-up stagger-2 h-full">
+            <Kpi
+              label="LTV médio"
+              sublabel="receita acumulada por cliente"
+              icon={<Trophy className="size-4" />}
+              iconTone="good"
+              numericValue={ltv.avgLTV}
+              formatValue={(n) => formatBRL(n)}
+              animateNumber={{ to: ltv.avgLTV, format: (n) => formatBRL(n) }}
+            />
+          </div>
+          <div className="animate-fade-up stagger-3 h-full">
+            <Kpi
+              label="LTV total"
+              sublabel="soma dos LTVs estimados"
+              icon={<Coins className="size-4" />}
+              iconTone="good"
+              numericValue={ltv.totalLTV}
+              formatValue={(n) => formatBRL(n)}
+              animateNumber={{ to: ltv.totalLTV, format: (n) => formatBRL(n) }}
+              accent="positive"
+            />
+          </div>
+          <div className="animate-fade-up stagger-4 h-full">
+            <Kpi
+              label="MRR cumulativo"
+              sublabel="todas mensalidades somadas"
+              icon={<DollarSign className="size-4" />}
+              iconTone="primary"
+              numericValue={ltv.totalMRR}
+              formatValue={(n) => formatBRL(n)}
+              animateNumber={{ to: ltv.totalMRR, format: (n) => formatBRL(n) }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Linha 3: Financeiro */}
       {(hasInvestment || hasMrr || hasRevenue) && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-fr">
           <div className="animate-fade-up stagger-3 h-full">
@@ -202,6 +258,7 @@ function Kpi({
   value,
   numericValue,
   formatValue,
+  animateNumber,
   hint,
   accent,
   muted,
@@ -211,16 +268,19 @@ function Kpi({
   sublabel?: string;
   icon: React.ReactNode;
   iconTone?: IconTone;
-  /** Use `value` para texto estático OU `numericValue` + `formatValue` pra CountUp animado. */
   value?: string;
   numericValue?: number;
   formatValue?: (n: number) => string;
+  /** Alias compatível com a versão antiga (animateNumber={{to, format}}). */
+  animateNumber?: { to: number; format: (n: number) => string };
   hint?: string;
   accent?: "warn" | "danger" | "positive";
   muted?: boolean;
-  /** Conteúdo extra que se acomoda no rodapé (ex: dots de status). */
   footer?: React.ReactNode;
 }) {
+  // Compatibilidade: aceita ambas APIs
+  const effectiveNumeric = numericValue ?? animateNumber?.to;
+  const effectiveFormat = formatValue ?? animateNumber?.format;
   const valueColor =
     accent === "danger"
       ? "text-rose-600 dark:text-rose-400"
@@ -277,8 +337,8 @@ function Kpi({
           valueColor
         )}
       >
-        {numericValue !== undefined && formatValue ? (
-          <CountUp to={numericValue} format={formatValue} />
+        {effectiveNumeric !== undefined && effectiveFormat ? (
+          <CountUp to={effectiveNumeric} format={effectiveFormat} />
         ) : (
           value
         )}

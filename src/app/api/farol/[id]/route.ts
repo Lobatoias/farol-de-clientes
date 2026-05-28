@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { setFarol } from "@/lib/clickup";
-import { invalidateClientsCache } from "@/lib/clients";
+import { getClientById, invalidateClientsCache } from "@/lib/clients";
+import { notifyCriticalClient } from "@/lib/chatwoot";
 import type { Status } from "@/lib/types";
 
 interface RouteContext {
@@ -40,12 +41,28 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
+    // Captura status anterior pra detectar transição → vermelho
+    const previousClient = await getClientById(id).catch(() => null);
+    const previousStatus = previousClient?.status;
+
     await setFarol(id, status);
-    // Dupla invalidação: in-memory + Next.js page cache
     invalidateClientsCache();
     revalidatePath("/");
     revalidatePath(`/cliente/${id}`);
     revalidatePath("/estrategico");
+
+    // Notifica Chatwoot APENAS na transição pra vermelho (não em vermelho→vermelho)
+    if (status === "vermelho" && previousStatus !== "vermelho") {
+      // Busca cliente atualizado pra mensagem ter contexto correto
+      const updated = await getClientById(id).catch(() => previousClient);
+      if (updated) {
+        // Fire-and-forget — não bloqueia a resposta
+        notifyCriticalClient(updated).catch((err) =>
+          console.error("[Farol] notifyCriticalClient falhou:", err)
+        );
+      }
+    }
+
     return NextResponse.json({ ok: true, status });
   } catch (err) {
     console.error("[Farol] Erro ao salvar:", err);

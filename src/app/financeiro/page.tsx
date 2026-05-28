@@ -3,6 +3,7 @@ import { getClients, isUsingMockData } from "@/lib/clients";
 import { FinanceiroEditor } from "@/components/financeiro-editor";
 import { SourceBanner } from "@/components/source-banner";
 import { NichoBreakdown } from "@/components/nicho-breakdown";
+import { LTVSection } from "@/components/ltv-section";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -36,6 +37,8 @@ export default async function FinanceiroPage() {
         </div>
         <SourceBanner source={isUsingMockData() ? "mock" : "clickup"} count={clients.length} />
       </div>
+
+      <LTVSection clients={clients} />
 
       <NichoBreakdown clients={clients} />
 
