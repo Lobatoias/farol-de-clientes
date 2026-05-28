@@ -104,30 +104,35 @@ async function saveFinancialEntryToSupabase(
 ): Promise<boolean> {
   const sb = getSupabase();
   if (!sb) return false;
-  // Upsert: merge com existente
-  const row: Partial<FinancialRow> = {
-    task_id: id,
-    name: entry.name ?? null,
-    monthly_revenue: entry.monthlyRevenue ?? null,
-    contract_start_at: entry.contractStartAt ?? null,
-    contract_end_at: entry.contractEndAt ?? null,
-    client_since: entry.clientSince ?? null,
-    mrr: entry.mrr ?? null,
-    cost: entry.cost ?? null,
-  };
-  // Para preservar campos não enviados, ler primeiro e mergear
-  const { data: existing } = await sb.from("financials").select("*").eq("task_id", id).maybeSingle();
-  if (existing) {
-    Object.keys(row).forEach((k) => {
-      const key = k as keyof typeof row;
-      if (!(key in entry) && key !== "task_id") {
-        // não sobrescreve campos não enviados
-        (row as Record<string, unknown>)[key] = (existing as Record<string, unknown>)[key];
-      }
-    });
-    // entry.name vem sempre — mantém
-  }
-  const { error } = await sb.from("financials").upsert(row, { onConflict: "task_id" });
+
+  // 1) Lê o existente pra usar como base
+  const { data: existing } = await sb
+    .from("financials")
+    .select("*")
+    .eq("task_id", id)
+    .maybeSingle();
+
+  // 2) Começa com TODOS os campos do existing (preserva tudo que já tem)
+  const merged: Partial<FinancialRow> = existing ? { ...existing } : {};
+
+  // 3) Aplica APENAS os campos que vieram no entry — chave por chave
+  //    (entry usa camelCase, tabela snake_case — mapeamento explícito)
+  if ("name" in entry) merged.name = entry.name ?? null;
+  if ("monthlyRevenue" in entry) merged.monthly_revenue = entry.monthlyRevenue ?? null;
+  if ("contractStartAt" in entry) merged.contract_start_at = entry.contractStartAt ?? null;
+  if ("contractEndAt" in entry) merged.contract_end_at = entry.contractEndAt ?? null;
+  if ("clientSince" in entry) merged.client_since = entry.clientSince ?? null;
+  if ("mrr" in entry) merged.mrr = entry.mrr ?? null;
+  if ("cost" in entry) merged.cost = entry.cost ?? null;
+
+  // 4) task_id sempre presente
+  merged.task_id = id;
+
+  // 5) Limpa metadados que o Supabase gerencia
+  delete (merged as Record<string, unknown>).created_at;
+  delete (merged as Record<string, unknown>).updated_at;
+
+  const { error } = await sb.from("financials").upsert(merged, { onConflict: "task_id" });
   if (error) {
     console.error("[Farol] Supabase save error:", error);
     throw new Error(error.message);
