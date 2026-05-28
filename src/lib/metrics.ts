@@ -12,6 +12,13 @@ export interface ClientLTV {
   hasFullData: boolean;
 }
 
+export interface LTVByNiche {
+  niche: string;
+  count: number;
+  totalLTV: number;
+  avgLTV: number;
+}
+
 export interface LTVMetrics {
   /** Tempo médio (meses) que os clientes ATIVOS estão com a agência. */
   avgTenureMonths: number;
@@ -19,12 +26,21 @@ export interface LTVMetrics {
   totalLTV: number;
   /** LTV médio por cliente — `totalLTV / nº de clientes com dados`. */
   avgLTV: number;
+  /** LTV em risco = soma de LTV de clientes amarelo + vermelho. */
+  ltvAtRisk: number;
+  /** % do LTV total que está em risco. */
+  riskPct: number;
   /** Quantos clientes têm dados suficientes pra entrar na conta. */
   clientsWithData: number;
   /** Top N clientes ordenados por LTV estimado. */
   perClient: ClientLTV[];
   /** Mensalidade total recorrente da base (MRR cumulativo). */
   totalMRR: number;
+  /** Projeção: se a retenção média continuar, quanto vira em 12/24 meses (MRR × meses adicionais). */
+  forecast12mo: number;
+  forecast24mo: number;
+  /** LTV agrupado por nicho. */
+  byNiche: LTVByNiche[];
 }
 
 /**
@@ -66,9 +82,14 @@ export function calculateLTV(clients: Client[]): LTVMetrics {
       avgTenureMonths: 0,
       totalLTV: 0,
       avgLTV: 0,
+      ltvAtRisk: 0,
+      riskPct: 0,
       clientsWithData: 0,
       perClient: perClient.sort((a, b) => b.estimatedLTV - a.estimatedLTV),
       totalMRR,
+      forecast12mo: 0,
+      forecast24mo: 0,
+      byNiche: [],
     };
   }
 
@@ -77,13 +98,50 @@ export function calculateLTV(clients: Client[]): LTVMetrics {
   const totalLTV = withData.reduce((s, p) => s + p.estimatedLTV, 0);
   const avgLTV = totalLTV / withData.length;
 
+  // LTV em risco = soma do LTV dos clientes em amarelo + vermelho
+  const ltvAtRisk = withData
+    .filter((p) => p.status !== "verde")
+    .reduce((s, p) => s + p.estimatedLTV, 0);
+  const riskPct = totalLTV > 0 ? ltvAtRisk / totalLTV : 0;
+
+  // Forecast: se a retenção média continuar, MRR vezes meses adicionais
+  // Pra cada cliente ativo, projeção = monthlyRevenue × (12 ou 24)
+  const activeMRR = withData
+    .filter((p) => p.status !== "vermelho") // tira vermelhos da projeção (presume churn)
+    .reduce((s, p) => s + p.monthlyRevenue, 0);
+  const forecast12mo = totalLTV + activeMRR * 12;
+  const forecast24mo = totalLTV + activeMRR * 24;
+
+  // Agrupar por nicho
+  const nicheMap = new Map<string, { count: number; total: number }>();
+  for (const p of withData) {
+    const key = p.niche?.trim() || "Sem nicho";
+    const existing = nicheMap.get(key) ?? { count: 0, total: 0 };
+    existing.count++;
+    existing.total += p.estimatedLTV;
+    nicheMap.set(key, existing);
+  }
+  const byNiche: LTVByNiche[] = Array.from(nicheMap.entries())
+    .map(([niche, { count, total }]) => ({
+      niche,
+      count,
+      totalLTV: total,
+      avgLTV: total / count,
+    }))
+    .sort((a, b) => b.totalLTV - a.totalLTV);
+
   return {
     avgTenureMonths: avgTenure,
     totalLTV,
     avgLTV,
+    ltvAtRisk,
+    riskPct,
     clientsWithData: withData.length,
     perClient: perClient.sort((a, b) => b.estimatedLTV - a.estimatedLTV),
     totalMRR,
+    forecast12mo,
+    forecast24mo,
+    byNiche,
   };
 }
 
