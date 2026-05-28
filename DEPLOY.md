@@ -167,3 +167,90 @@ Tudo já está pronto pra deploy:
 - ✅ `supabase-schema.sql` pronto pra colar
 
 **Custo total estimado por mês:** R$ 0 (free tier de Supabase + Vercel suporta o volume da agência tranquilamente).
+
+---
+
+## 6. Chatwoot: alerta WhatsApp quando cliente vira vermelho
+
+Quando configurado, toda vez que um cliente transitar pra **vermelho** no Farol, uma mensagem WhatsApp é disparada via Chatwoot pro gestor responsável.
+
+### 6.1 Pegar credenciais no Chatwoot
+
+1. Entra em **https://app.chatwoot.com** (ou seu Chatwoot self-hosted)
+2. Clica no avatar → **Profile Settings** → **Access Token** → copia o token
+
+### 6.2 Identificar Account ID e Inbox ID
+
+- **Account ID**: visível na URL: `app.chatwoot.com/app/accounts/{NUMERO}/...`
+- **Inbox ID** (canal WhatsApp): Settings → Inboxes → clica no inbox WhatsApp → ID está na URL
+
+### 6.3 Definir quem recebe o alerta
+
+Você pode escolher **um** dos dois:
+
+**A) Por Contact ID** (se gestor já é contato no Chatwoot):
+- Settings → Contacts → busca o gestor → ID na URL
+
+**B) Por telefone** (cria contato automático se não existir):
+- Use formato E.164: `+5511999999999` (com + e código país)
+
+### 6.4 Adicionar env vars na Vercel
+
+Vai em **Vercel → farol-de-clientes → Settings → Environment Variables** e adiciona:
+
+| Nome | Valor | Obrigatório |
+|---|---|---|
+| `CHATWOOT_URL` | `https://app.chatwoot.com` (ou seu domínio) | Sim |
+| `CHATWOOT_API_TOKEN` | token do passo 6.1 | Sim |
+| `CHATWOOT_ACCOUNT_ID` | número do passo 6.2 | Sim |
+| `CHATWOOT_INBOX_ID` | número do passo 6.2 (canal WhatsApp) | Sim |
+| `CHATWOOT_TARGET_CONTACT_ID` | ID do contato gestor (modo A) | um dos dois |
+| `CHATWOOT_TARGET_PHONE` | `+5511999999999` (modo B) | um dos dois |
+| `CHATWOOT_TARGET_NAME` | `Daniel` (usado se criar contato pelo telefone) | Opcional |
+
+Depois de salvar, **redeploy** (Vercel → Deployments → último deploy → ⋯ → Redeploy).
+
+### 6.5 Testar
+
+1. Acessa a URL pública do Farol
+2. Login
+3. Pega qualquer cliente que esteja em verde/amarelo
+4. Clica no badge e muda pra **Crítico**
+5. Em segundos, deve chegar uma mensagem WhatsApp no número/contato configurado
+
+**Conteúdo da mensagem:**
+```
+🔴 *NOME DO CLIENTE* entrou em status CRÍTICO no Farol.
+
+Responsável: <CSM>
+Nicho: <nicho>
+Investimento sob gestão: R$ X.XXX/mês
+Tasks abertas: N
+Sinais: <tags de risco>
+
+Recomendação: contato imediato com o cliente.
+
+— Farol de Clientes
+```
+
+### 6.6 Comportamento de segurança
+
+- Notificação só dispara em **transição** verde/amarelo → vermelho. Se já está vermelho e clica "vermelho" de novo, **não duplica**.
+- Se Chatwoot falhar (token inválido, fora do ar, etc), o Farol **continua salvando** normalmente. A notificação é fire-and-forget.
+- Timeout de 8s na chamada Chatwoot pra não pendurar a API do Farol.
+
+---
+
+## 7. LTV e retenção
+
+A página `/financeiro` mostra uma seção **LTV e retenção** com:
+- **Retenção média**: meses desde `Cliente desde` até hoje (apenas clientes com data preenchida)
+- **LTV médio**: `mensalidade × tempo de casa` por cliente, média
+- **LTV total**: soma dos LTVs
+- **Top 5 por LTV**: ranking pra você ver onde está o valor
+
+Também aparece como uma linha de KPIs no Dashboard quando há ao menos 1 cliente com dados.
+
+**Pra alimentar o cálculo:** preenche `Cliente desde` e `Mensalidade` no `/financeiro`. Quanto mais clientes preencher, mais preciso fica.
+
+**Limitação atual:** sem dados de churn (clientes que sairam). Quando você implementar isso (futuro), o LTV vira de "estimativa atual" pra "média histórica real".
