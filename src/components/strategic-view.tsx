@@ -49,6 +49,8 @@ export function StrategicViewBlock({ view, generatedAt }: StrategicViewProps) {
     setDialog({ title, subtitle, items });
   }
 
+  // Botões deixam claro que são otimizações, não "ações genéricas" ou "save offer"
+
   return (
     <div className="space-y-8">
       {/* Cabeçalho */}
@@ -68,8 +70,8 @@ export function StrategicViewBlock({ view, generatedAt }: StrategicViewProps) {
           O que merece sua atenção esta semana
         </h1>
         <p className="text-sm text-[color:var(--muted-foreground)] max-w-2xl">
-          Cruzamentos da sua base real — sem mock. Cada insight tem um
-          <strong className="text-[color:var(--foreground)]"> plano de ação clicável</strong> com 4-6 passos práticos.
+          Cruzamentos da sua base real — sem mock. Cada insight abre um
+          <strong className="text-[color:var(--foreground)]"> plano de otimização</strong> com passos práticos baseados em reclamações reais do cliente. <em>Nunca desconto.</em>
         </p>
       </div>
 
@@ -80,8 +82,8 @@ export function StrategicViewBlock({ view, generatedAt }: StrategicViewProps) {
           priorities={view.priorities}
           onOpenChecklist={(client) =>
             openChecklist(
-              client.status === "vermelho" ? "critical-account" : "critical-account",
-              `Plano para ${client.name}`,
+              "critical-account",
+              `Otimizações para ${client.name}`,
               `${client.niche ?? "Sem nicho"} · ${client.owner}`
             )
           }
@@ -306,7 +308,7 @@ function PrioritiesSection({
                 className="text-xs font-medium px-3 h-8 rounded-md border border-[color:var(--border)] hover:bg-[color:var(--muted)] transition-colors inline-flex items-center gap-1.5"
               >
                 <CheckCircle2 className="size-3" />
-                Plano de ação
+                Plano de otimização
               </button>
             </div>
           </article>
@@ -446,7 +448,7 @@ function SignalCard({
         className="text-xs font-medium px-3 h-8 rounded-md border border-[color:var(--border)] hover:bg-[color:var(--muted)] transition-colors inline-flex items-center gap-1.5"
       >
         <CheckCircle2 className="size-3" />
-        Plano de ação
+        Plano de otimização
       </button>
     </article>
   );

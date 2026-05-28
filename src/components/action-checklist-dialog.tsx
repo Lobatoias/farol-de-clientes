@@ -97,7 +97,7 @@ export function ActionChecklistDialog({
         <div className="pt-3 border-t border-[color:var(--border)] flex items-center justify-between">
           <p className="text-[11px] text-[color:var(--muted-foreground)] flex items-center gap-1.5">
             <CheckCircle2 className="size-3" />
-            Checklist sugerida — adapte ao contexto do seu cliente
+            Otimizações sugeridas — adapte às reclamações reais do cliente
           </p>
           <button
             type="button"
