@@ -32,8 +32,12 @@ export function NichoBreakdown({ clients }: NichoBreakdownProps) {
   const stats = buildStats(clients);
   const totalRevenue = stats.reduce((s, n) => s + n.totalRevenue, 0);
   const totalClients = stats.reduce((s, n) => s + n.count, 0);
-  const hasRevenue = totalRevenue > 0;
-  const showByCount = !hasRevenue;
+  // Mostra por receita SÓ se a maioria dos nichos tem dado preenchido
+  // (evita gráfico distorcido quando 1 cliente puxa 100% do total).
+  const nichesWithRevenue = stats.filter((n) => n.totalRevenue > 0).length;
+  const hasMeaningfulRevenue =
+    totalRevenue > 0 && nichesWithRevenue >= Math.max(2, Math.ceil(stats.length * 0.5));
+  const showByCount = !hasMeaningfulRevenue;
   const totalForPct = showByCount ? totalClients : totalRevenue;
 
   const sorted = [...stats].sort((a, b) =>
@@ -67,7 +71,7 @@ export function NichoBreakdown({ clients }: NichoBreakdownProps) {
               : `De onde vem o faturamento mensal`}
           </p>
         </div>
-        <ModeBadge byRevenue={hasRevenue} />
+        <ModeBadge byRevenue={hasMeaningfulRevenue} />
       </div>
 
       {stats.length === 0 ? (
@@ -163,7 +167,7 @@ export function NichoBreakdown({ clients }: NichoBreakdownProps) {
         </div>
       )}
 
-      {!hasRevenue && stats.length > 0 && (
+      {!hasMeaningfulRevenue && stats.length > 0 && (
         <div className="mt-6 pt-4 border-t border-[color:var(--border)]">
           <p className="text-xs text-[color:var(--muted-foreground)] flex items-center gap-1.5">
             <TrendingUp className="size-3" />

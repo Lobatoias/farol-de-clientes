@@ -33,7 +33,6 @@ interface FinancialsFile {
   [taskOrFolderId: string]: FinancialEntry;
 }
 
-let financialsCache: FinancialsFile | null = null;
 const FINANCIALS_PATH = path.join(process.cwd(), "data", "financials.local.json");
 
 // === Supabase loader (production-ready) =============================
@@ -79,18 +78,15 @@ async function loadFinancialsFromFile(): Promise<FinancialsFile> {
 }
 
 async function loadFinancials(): Promise<FinancialsFile> {
-  if (financialsCache) return financialsCache;
-  // Supabase primeiro (produção). Se não configurado, fallback pra arquivo (dev).
+  // Sem cache em memória — em produção (Vercel) cada instância serverless
+  // teria seu próprio cache, causando inconsistência entre usuários.
   const fromSupabase = await loadFinancialsFromSupabase();
-  const result = fromSupabase ?? (await loadFinancialsFromFile());
-  financialsCache = result;
-  return result;
+  return fromSupabase ?? (await loadFinancialsFromFile());
 }
 
 export function invalidateFinancialsCache(): void {
-  financialsCache = null;
-  clientsCache = null; // Clientes derivam de financials, invalida tb
-  inflightGetClients = null; // mata promise pendente pra não servir dado velho
+  // Mantido por compatibilidade, mas não-op porque não temos mais cache local.
+  // A invalidação real acontece via revalidatePath() no API route.
 }
 
 export async function getFinancialEntry(id: string): Promise<FinancialEntry | null> {
@@ -353,21 +349,16 @@ function buildClientFromFolderOnly(folder: CKFolder, operationalTasks: CKTask[] 
   };
 }
 
-let clientsCache: { data: Client[]; ts: number } | null = null;
 let inflightGetClients: Promise<Client[]> | null = null;
-const CACHE_TTL_MS = 60_000;
 
 export async function getClients(): Promise<Client[]> {
   if (!CLICKUP_CONFIGURED) {
     return mockClients;
   }
 
-  if (clientsCache && Date.now() - clientsCache.ts < CACHE_TTL_MS) {
-    return clientsCache.data;
-  }
-
-  // Stampede protection: se já tem um fetch rolando, dá join nele.
-  // Evita 10 abas/refresh simultâneos disparando 10× as mesmas chamadas à ClickUp.
+  // Sem cache em memória — em produção Vercel, cada serverless instance
+  // teria cache próprio, causando dados desatualizados pra outros usuários.
+  // Mantemos só a dedup de promises em-vôo pra evitar stampede no MESMO render.
   if (inflightGetClients) {
     return inflightGetClients;
   }
@@ -434,15 +425,9 @@ async function doGetClients(): Promise<Client[]> {
       return a.name.localeCompare(b.name);
     });
 
-    clientsCache = { data: clients, ts: Date.now() };
     return clients;
   } catch (err) {
     console.error("[Farol] Erro ao buscar do ClickUp:", err);
-    // Cache expirado é melhor que mock se possível
-    if (clientsCache) {
-      console.warn("[Farol] Usando cache expirado como fallback");
-      return clientsCache.data;
-    }
     return mockClients;
   }
 }
@@ -481,7 +466,6 @@ export function isUsingMockData(): boolean {
 
 /** Invalida a cache em memória — chamar após mutações (ex: mudar Farol). */
 export function invalidateClientsCache(): void {
-  clientsCache = null;
   inflightGetClients = null;
 }
 

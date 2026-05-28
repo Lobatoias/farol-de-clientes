@@ -93,15 +93,15 @@ export function LTVSection({ clients }: LTVSectionProps) {
 
           {/* Linha 2: Forecast */}
           <div className="rounded-xl border border-[color:var(--border)] bg-[color:var(--card)] p-5">
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-1">
               <div className="size-7 rounded-md bg-blue-50 dark:bg-blue-950/40 grid place-items-center">
                 <CalendarClock className="size-3.5 text-blue-600 dark:text-blue-400" />
               </div>
-              <h4 className="text-sm font-semibold">Projeção</h4>
-              <span className="text-[11px] text-[color:var(--muted-foreground)]">
-                · se a retenção continuar (exclui vermelhos)
-              </span>
+              <h4 className="text-sm font-semibold">Projeção otimista</h4>
             </div>
+            <p className="text-[11px] text-[color:var(--muted-foreground)] mb-4 ml-9">
+              Assume que <strong>todos</strong> os clientes ativos mantêm a mensalidade. Considere o LTV em risco acima ({formatBRL(metrics.ltvAtRisk)}) como teto pra ajustar.
+            </p>
             <div className="grid grid-cols-3 gap-3">
               <ForecastTile
                 label="Hoje"

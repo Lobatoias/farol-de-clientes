@@ -104,13 +104,12 @@ export function calculateLTV(clients: Client[]): LTVMetrics {
     .reduce((s, p) => s + p.estimatedLTV, 0);
   const riskPct = totalLTV > 0 ? ltvAtRisk / totalLTV : 0;
 
-  // Forecast: se a retenção média continuar, MRR vezes meses adicionais
-  // Pra cada cliente ativo, projeção = monthlyRevenue × (12 ou 24)
-  const activeMRR = withData
-    .filter((p) => p.status !== "vermelho") // tira vermelhos da projeção (presume churn)
-    .reduce((s, p) => s + p.monthlyRevenue, 0);
-  const forecast12mo = totalLTV + activeMRR * 12;
-  const forecast24mo = totalLTV + activeMRR * 24;
+  // Forecast: se a retenção média continuar, MRR vezes meses adicionais.
+  // Usa TODOS os clientes com dados (otimista). O LTV em risco já indica
+  // o quanto dessa projeção pode evaporar se vermelhos/amarelos churnarem.
+  const allMRR = withData.reduce((s, p) => s + p.monthlyRevenue, 0);
+  const forecast12mo = totalLTV + allMRR * 12;
+  const forecast24mo = totalLTV + allMRR * 24;
 
   // Agrupar por nicho
   const nicheMap = new Map<string, { count: number; total: number }>();
