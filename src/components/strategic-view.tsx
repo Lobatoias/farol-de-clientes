@@ -32,6 +32,8 @@ import { ActionChecklistDialog } from "./action-checklist-dialog";
 
 interface StrategicViewProps {
   view: StrategicView;
+  /** Mapa "scope_id::checklist_key" → indices marcados, vindo do Supabase. */
+  progress: Record<string, number[]>;
   generatedAt: string;
 }
 
@@ -39,14 +41,34 @@ interface DialogState {
   title: string;
   subtitle?: string;
   items: string[];
+  scopeId: string;
+  checklistKey: string;
+  initialChecked: number[];
 }
 
-export function StrategicViewBlock({ view, generatedAt }: StrategicViewProps) {
+export function StrategicViewBlock({
+  view,
+  progress,
+  generatedAt,
+}: StrategicViewProps) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
 
-  function openChecklist(key: string, title: string, subtitle?: string) {
+  function openChecklist(
+    key: string,
+    scopeId: string,
+    title: string,
+    subtitle?: string
+  ) {
     const items = ACTION_CHECKLISTS[key] ?? [];
-    setDialog({ title, subtitle, items });
+    const initialChecked = progress[`${scopeId}::${key}`] ?? [];
+    setDialog({
+      title,
+      subtitle,
+      items,
+      scopeId,
+      checklistKey: key,
+      initialChecked,
+    });
   }
 
   // Botões deixam claro que são otimizações, não "ações genéricas" ou "save offer"
@@ -83,6 +105,7 @@ export function StrategicViewBlock({ view, generatedAt }: StrategicViewProps) {
           onOpenChecklist={(client) =>
             openChecklist(
               "critical-account",
+              client.id,
               `Otimizações para ${client.name}`,
               `${client.niche ?? "Sem nicho"} · ${client.owner}`
             )
@@ -97,18 +120,21 @@ export function StrategicViewBlock({ view, generatedAt }: StrategicViewProps) {
             if (signal.kind === "niche-concentration") {
               openChecklist(
                 "niche-concentration",
+                `niche:${signal.niche}`,
                 `Concentração de risco em ${signal.niche}`,
                 `${signal.criticalCount} críticos de ${signal.total} clientes`
               );
             } else if (signal.kind === "csm-load") {
               openChecklist(
                 "csm-load",
+                `csm:${signal.csm}`,
                 `Carga crítica de ${signal.csm}`,
                 `${signal.criticalCount} críticos / ${signal.atRiskCount} em risco`
               );
             } else if (signal.kind === "contract-expiring") {
               openChecklist(
                 "contract-expiring",
+                signal.client.id,
                 `Renovação: ${signal.client.name}`,
                 `Contrato vence em ${signal.daysUntil} dia${signal.daysUntil === 1 ? "" : "s"}`
               );
@@ -120,7 +146,7 @@ export function StrategicViewBlock({ view, generatedAt }: StrategicViewProps) {
       <HygieneSection
         issues={view.hygiene}
         onOpenChecklist={(issue) =>
-          openChecklist(issue.kind, issue.title, issue.description)
+          openChecklist(issue.kind, "global", issue.title, issue.description)
         }
       />
 
@@ -130,6 +156,9 @@ export function StrategicViewBlock({ view, generatedAt }: StrategicViewProps) {
         title={dialog?.title ?? ""}
         subtitle={dialog?.subtitle}
         items={dialog?.items ?? []}
+        scopeId={dialog?.scopeId ?? ""}
+        checklistKey={dialog?.checklistKey ?? ""}
+        initialChecked={dialog?.initialChecked ?? []}
       />
     </div>
   );

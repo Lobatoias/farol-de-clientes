@@ -44,6 +44,37 @@ create trigger trg_financials_updated_at
 alter table financials disable row level security;
 
 -- ============================================================
+-- Tabela: checklist_progress
+-- Guarda quais itens de cada "Plano de otimização" foram concluídos.
+-- scope_id   = ID do cliente (ClickUp task ID) OU pseudo-id pra signals
+--              que não são por cliente. Ex.:
+--                "critical-account" → scope_id = client_id
+--                "contract-expiring" → scope_id = client_id
+--                "niche-concentration" → scope_id = "niche:Imobiliária"
+--                "csm-load" → scope_id = "csm:Leonardo Potiens"
+--                "missing-niche" / "orphan-folder" / etc → scope_id = "global"
+-- checklist_key = qual checklist (corresponde às chaves de ACTION_CHECKLISTS).
+-- checked_indices = índices (0-based) dos itens concluídos.
+-- ============================================================
+
+create table if not exists checklist_progress (
+  scope_id text not null,
+  checklist_key text not null,
+  checked_indices integer[] not null default '{}',
+  updated_at timestamptz not null default now(),
+  primary key (scope_id, checklist_key)
+);
+
+create index if not exists idx_checklist_progress_key on checklist_progress (checklist_key);
+
+drop trigger if exists trg_checklist_progress_updated_at on checklist_progress;
+create trigger trg_checklist_progress_updated_at
+  before update on checklist_progress
+  for each row execute function set_updated_at();
+
+alter table checklist_progress disable row level security;
+
+-- ============================================================
 -- Pronto. Próximo passo: pegue as credenciais em
 -- Settings → API → Project URL + anon key public,
 -- e cole no .env.local (ou nas env vars da Vercel):

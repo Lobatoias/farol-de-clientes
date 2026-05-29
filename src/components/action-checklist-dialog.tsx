@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { X, CheckCircle2, ListChecks } from "lucide-react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { X, CheckCircle2, ListChecks, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ActionChecklistDialogProps {
@@ -10,6 +10,12 @@ interface ActionChecklistDialogProps {
   title: string;
   subtitle?: string;
   items: string[];
+  /** Identificador único do escopo (clientId, "niche:X", "csm:Y", "global"). */
+  scopeId: string;
+  /** Qual checklist (corresponde à chave de ACTION_CHECKLISTS). */
+  checklistKey: string;
+  /** Índices inicialmente marcados (vindos do Supabase). */
+  initialChecked: number[];
 }
 
 export function ActionChecklistDialog({
@@ -18,7 +24,24 @@ export function ActionChecklistDialog({
   title,
   subtitle,
   items,
+  scopeId,
+  checklistKey,
+  initialChecked,
 }: ActionChecklistDialogProps) {
+  // Estado local sincroniza com initialChecked sempre que o diálogo reabre
+  const [checked, setChecked] = useState<Set<number>>(
+    () => new Set(initialChecked)
+  );
+  const [saving, startSaving] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setChecked(new Set(initialChecked));
+      setError(null);
+    }
+  }, [open, initialChecked]);
+
   // ESC pra fechar
   useEffect(() => {
     if (!open) return;
@@ -28,6 +51,55 @@ export function ActionChecklistDialog({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
+
+  const progress = useMemo(() => {
+    const done = items.reduce(
+      (acc, _item, idx) => acc + (checked.has(idx) ? 1 : 0),
+      0
+    );
+    return { done, total: items.length };
+  }, [checked, items]);
+
+  const allDone = progress.done === progress.total && progress.total > 0;
+
+  function persist(next: Set<number>) {
+    const indices = [...next].sort((a, b) => a - b);
+    startSaving(async () => {
+      try {
+        const res = await fetch("/api/checklist-progress", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            scopeId,
+            checklistKey,
+            checkedIndices: indices,
+          }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error || `HTTP ${res.status}`);
+        }
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Falha ao salvar");
+      }
+    });
+  }
+
+  function toggle(idx: number) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      persist(next);
+      return next;
+    });
+  }
+
+  function reset() {
+    setChecked(new Set());
+    persist(new Set());
+  }
 
   if (!open) return null;
 
@@ -45,12 +117,13 @@ export function ActionChecklistDialog({
       <div
         className={cn(
           "relative bg-[color:var(--card-elevated)] border border-[color:var(--border)] rounded-2xl shadow-2xl",
-          "w-full max-w-lg p-6 space-y-5 animate-fade-up"
+          "w-full max-w-lg p-6 space-y-5 animate-fade-up max-h-[90vh] overflow-y-auto"
         )}
         role="dialog"
         aria-modal="true"
         aria-labelledby="action-dialog-title"
       >
+        {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="size-9 rounded-xl bg-blue-50 dark:bg-blue-950/40 grid place-items-center">
@@ -80,31 +153,127 @@ export function ActionChecklistDialog({
           </button>
         </div>
 
-        <ul className="space-y-2.5">
-          {items.map((item, i) => (
-            <li
-              key={i}
-              className="flex items-start gap-3 p-3 rounded-xl border border-[color:var(--border)] hover:bg-[color:var(--muted)]/30 transition-colors group"
+        {/* Barra de progresso */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span
+              className={cn(
+                "font-medium tabular-nums",
+                allDone
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-[color:var(--muted-foreground)]"
+              )}
             >
-              <span className="size-6 rounded-md bg-[color:var(--muted)] grid place-items-center text-[10px] font-bold tabular-nums shrink-0 mt-0.5 group-hover:bg-emerald-100 dark:group-hover:bg-emerald-950/60 transition-colors">
-                {i + 1}
-              </span>
-              <p className="text-sm leading-relaxed">{item}</p>
-            </li>
-          ))}
+              {progress.done} de {progress.total} concluído{progress.total === 1 ? "" : "s"}
+            </span>
+            <div className="flex items-center gap-2">
+              {saving && (
+                <span className="text-[10px] text-[color:var(--muted-foreground)]">
+                  salvando…
+                </span>
+              )}
+              {progress.done > 0 && (
+                <button
+                  type="button"
+                  onClick={reset}
+                  className="inline-flex items-center gap-1 text-[11px] text-[color:var(--muted-foreground)] hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                >
+                  <RotateCcw className="size-3" />
+                  Resetar
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="h-1.5 rounded-full bg-[color:var(--muted)] overflow-hidden">
+            <div
+              className={cn(
+                "h-full transition-all duration-300 ease-out",
+                allDone ? "bg-emerald-500" : "bg-blue-500"
+              )}
+              style={{
+                width:
+                  progress.total > 0
+                    ? `${(progress.done / progress.total) * 100}%`
+                    : "0%",
+              }}
+            />
+          </div>
+          {error && (
+            <p className="text-[11px] text-rose-600 dark:text-rose-400">
+              ⚠️ {error}
+            </p>
+          )}
+        </div>
+
+        {/* Lista de itens */}
+        <ul className="space-y-2">
+          {items.map((item, i) => {
+            const isChecked = checked.has(i);
+            return (
+              <li key={i}>
+                <button
+                  type="button"
+                  onClick={() => toggle(i)}
+                  className={cn(
+                    "w-full flex items-start gap-3 p-3 rounded-xl border text-left transition-all group",
+                    isChecked
+                      ? "border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/20"
+                      : "border-[color:var(--border)] hover:bg-[color:var(--muted)]/40 hover:border-[color:var(--muted-foreground)]/30"
+                  )}
+                  aria-pressed={isChecked}
+                >
+                  {/* Checkbox custom */}
+                  <span
+                    className={cn(
+                      "size-6 rounded-md grid place-items-center text-[10px] font-bold tabular-nums shrink-0 mt-0.5 transition-all",
+                      isChecked
+                        ? "bg-emerald-500 text-white"
+                        : "bg-[color:var(--muted)] text-[color:var(--foreground)] group-hover:bg-blue-100 dark:group-hover:bg-blue-950/60"
+                    )}
+                  >
+                    {isChecked ? (
+                      <CheckCircle2 className="size-3.5" strokeWidth={2.5} />
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  <p
+                    className={cn(
+                      "text-sm leading-relaxed transition-all",
+                      isChecked
+                        ? "line-through text-[color:var(--muted-foreground)]"
+                        : "text-[color:var(--foreground)]"
+                    )}
+                  >
+                    {item}
+                  </p>
+                </button>
+              </li>
+            );
+          })}
         </ul>
 
-        <div className="pt-3 border-t border-[color:var(--border)] flex items-center justify-between">
-          <p className="text-[11px] text-[color:var(--muted-foreground)] flex items-center gap-1.5">
-            <CheckCircle2 className="size-3" />
-            Otimizações sugeridas — adapte às reclamações reais do cliente
+        {/* Footer */}
+        <div className="pt-3 border-t border-[color:var(--border)] flex items-center justify-between gap-3">
+          <p className="text-[11px] text-[color:var(--muted-foreground)] flex items-center gap-1.5 flex-1">
+            <CheckCircle2 className="size-3 shrink-0" />
+            <span className="leading-tight">
+              {allDone
+                ? "Tudo concluído. Bom trabalho."
+                : "Marque os itens conforme avançar — fica salvo pra todo mundo do time."}
+            </span>
           </p>
           <button
             type="button"
             onClick={onClose}
-            className="text-xs font-medium px-3 h-8 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className={cn(
+              "text-xs font-medium px-3 h-8 rounded-md text-white transition-colors shrink-0",
+              allDone
+                ? "bg-emerald-600 hover:bg-emerald-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            )}
           >
-            Entendi
+            {allDone ? "Fechar" : "Entendi"}
           </button>
         </div>
       </div>
