@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { X, CheckCircle2, ListChecks, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** Compara dois sets de inteiros — true se idênticos. */
+function setsEqual(a: Set<number>, b: Set<number>): boolean {
+  if (a.size !== b.size) return false;
+  for (const v of a) if (!b.has(v)) return false;
+  return true;
+}
 
 interface ActionChecklistDialogProps {
   open: boolean;
@@ -29,18 +36,38 @@ export function ActionChecklistDialog({
   initialChecked,
 }: ActionChecklistDialogProps) {
   // Estado local sincroniza com initialChecked sempre que o diálogo reabre
+  // Estabilizamos o set inicial pra evitar resets a cada re-render do parent
+  const initialKey = useMemo(
+    () => [...initialChecked].sort((a, b) => a - b).join(","),
+    [initialChecked]
+  );
   const [checked, setChecked] = useState<Set<number>>(
     () => new Set(initialChecked)
   );
-  const [saving, startSaving] = useTransition();
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Última versão persistida no servidor (referência) — pra evitar POSTs redundantes
+  const lastPersistedRef = useRef<Set<number>>(new Set(initialChecked));
+  // Timer do debounce
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Flag pra distinguir mudança vinda do usuário vs vinda do sync
+  const isSyncingRef = useRef(false);
+
+  // Reset quando reabre com novo cliente/checklist (initialKey identifica o conteúdo)
   useEffect(() => {
-    if (open) {
-      setChecked(new Set(initialChecked));
-      setError(null);
-    }
-  }, [open, initialChecked]);
+    if (!open) return;
+    isSyncingRef.current = true;
+    setChecked(new Set(initialChecked));
+    lastPersistedRef.current = new Set(initialChecked);
+    setError(null);
+    // Reset flag depois do próximo tick
+    queueMicrotask(() => {
+      isSyncingRef.current = false;
+    });
+    // initialChecked não é estável — usamos initialKey como proxy
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, scopeId, checklistKey, initialKey]);
 
   // ESC pra fechar
   useEffect(() => {
@@ -52,19 +79,20 @@ export function ActionChecklistDialog({
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
-  const progress = useMemo(() => {
-    const done = items.reduce(
-      (acc, _item, idx) => acc + (checked.has(idx) ? 1 : 0),
-      0
-    );
-    return { done, total: items.length };
-  }, [checked, items]);
+  // Persiste o estado atual no servidor (debounced).
+  // Roda sempre que `checked` muda E não é uma sincronização vinda do server.
+  useEffect(() => {
+    if (!open) return;
+    if (isSyncingRef.current) return;
+    if (setsEqual(checked, lastPersistedRef.current)) return;
 
-  const allDone = progress.done === progress.total && progress.total > 0;
+    // Debounce: cancela timer anterior, agenda novo POST em 400ms
+    if (debounceRef.current) clearTimeout(debounceRef.current);
 
-  function persist(next: Set<number>) {
-    const indices = [...next].sort((a, b) => a - b);
-    startSaving(async () => {
+    debounceRef.current = setTimeout(async () => {
+      const snapshot = new Set(checked);
+      const indices = [...snapshot].sort((a, b) => a - b);
+      setSaving(true);
       try {
         const res = await fetch("/api/checklist-progress", {
           method: "POST",
@@ -79,26 +107,41 @@ export function ActionChecklistDialog({
           const body = await res.json().catch(() => ({}));
           throw new Error(body?.error || `HTTP ${res.status}`);
         }
+        lastPersistedRef.current = snapshot;
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Falha ao salvar");
+      } finally {
+        setSaving(false);
       }
-    });
-  }
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [checked, open, scopeId, checklistKey]);
+
+  const progress = useMemo(() => {
+    const done = items.reduce(
+      (acc, _item, idx) => acc + (checked.has(idx) ? 1 : 0),
+      0
+    );
+    return { done, total: items.length };
+  }, [checked, items]);
+
+  const allDone = progress.done === progress.total && progress.total > 0;
 
   function toggle(idx: number) {
     setChecked((prev) => {
       const next = new Set(prev);
       if (next.has(idx)) next.delete(idx);
       else next.add(idx);
-      persist(next);
       return next;
     });
   }
 
   function reset() {
     setChecked(new Set());
-    persist(new Set());
   }
 
   if (!open) return null;
