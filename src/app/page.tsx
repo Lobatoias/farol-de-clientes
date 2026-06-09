@@ -13,7 +13,12 @@ export const revalidate = 0;
 export default async function DashboardPage() {
   const allClients = await getClients();
   const churnedCount = allClients.filter((c) => c.isChurned).length;
-  const activeClients = allClients.filter((c) => !c.isChurned);
+  // Dashboard não exibe notas de reunião — strip pra encolher o payload RSC
+  // (notas podem ser 5-10k chars por cliente; em 50+ clientes vira ~300KB
+  // de HTML/JSON desnecessário trafegado pro browser)
+  const activeClients = allClients
+    .filter((c) => !c.isChurned)
+    .map((c) => ({ ...c, meetingNotes: undefined }));
   const usingMock = isUsingMockData();
 
   return (

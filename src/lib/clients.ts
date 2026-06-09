@@ -351,22 +351,40 @@ function buildClientFromFolderOnly(folder: CKFolder, operationalTasks: CKTask[] 
 }
 
 let inflightGetClients: Promise<Client[]> | null = null;
+let clientsCache: { data: Client[]; expiresAt: number } | null = null;
+
+/**
+ * TTL curto pra balancear velocidade vs consistência multi-instância.
+ * Cada Vercel instance tem seu cache; pior caso = 30s de "delay" de
+ * propagação entre instâncias quando alguém edita algo. Mutations chamam
+ * invalidateClientsCache() pra zerar imediatamente.
+ */
+const CLIENTS_CACHE_TTL_MS = 30_000;
 
 export async function getClients(): Promise<Client[]> {
   if (!CLICKUP_CONFIGURED) {
     return mockClients;
   }
 
-  // Sem cache em memória — em produção Vercel, cada serverless instance
-  // teria cache próprio, causando dados desatualizados pra outros usuários.
-  // Mantemos só a dedup de promises em-vôo pra evitar stampede no MESMO render.
+  // 1) Cache válido — retorna na hora
+  const now = Date.now();
+  if (clientsCache && clientsCache.expiresAt > now) {
+    return clientsCache.data;
+  }
+
+  // 2) Dedup de promises em-vôo — evita stampede no MESMO render
   if (inflightGetClients) {
     return inflightGetClients;
   }
 
-  inflightGetClients = doGetClients().finally(() => {
-    inflightGetClients = null;
-  });
+  inflightGetClients = doGetClients()
+    .then((data) => {
+      clientsCache = { data, expiresAt: Date.now() + CLIENTS_CACHE_TTL_MS };
+      return data;
+    })
+    .finally(() => {
+      inflightGetClients = null;
+    });
   return inflightGetClients;
 }
 
@@ -491,6 +509,7 @@ export async function getChurnedClients(): Promise<Client[]> {
 
 /** Invalida a cache em memória — chamar após mutações (ex: mudar Farol). */
 export function invalidateClientsCache(): void {
+  clientsCache = null;
   inflightGetClients = null;
 }
 

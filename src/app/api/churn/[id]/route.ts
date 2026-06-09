@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { recordChurn, undoLatestChurn } from "@/lib/churn";
-import { getClientById } from "@/lib/clients";
+import { getClients, invalidateClientsCache } from "@/lib/clients";
 import { CHURN_REASONS } from "@/lib/types";
 
 interface RouteContext {
@@ -18,6 +18,9 @@ interface Body {
 }
 
 function revalidateAll(id: string) {
+  // Invalida cache em memória dos clientes pra que a próxima leitura
+  // pegue os dados frescos (incluindo o estado de isChurned recém-mudado).
+  invalidateClientsCache();
   revalidatePath("/");
   revalidatePath("/financeiro");
   revalidatePath("/estrategico");
@@ -82,12 +85,15 @@ export async function POST(request: Request, context: RouteContext) {
       ? body.reasonDetails.trim().slice(0, 1000)
       : undefined;
 
-  // Snapshot: pega CSM/MRR/nicho atuais do cliente
+  // Snapshot: pega CSM/MRR/nicho atuais do cliente.
+  // IMPORTANTE: usa getClients() (light) ao invés de getClientById() (heavy
+  // que faz +1 fetch ClickUp pra timeline). Snapshot não precisa de timeline.
   let csmAtTime: string | undefined;
   let monthlyRevenueAtTime: number | undefined;
   let nicheAtTime: string | undefined;
   try {
-    const client = await getClientById(id);
+    const all = await getClients();
+    const client = all.find((c) => c.id === id);
     if (client) {
       csmAtTime = client.owner || undefined;
       monthlyRevenueAtTime = client.monthlyRevenue;

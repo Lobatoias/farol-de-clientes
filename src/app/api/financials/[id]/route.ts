@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { saveFinancialEntry, type FinancialEntry } from "@/lib/clients";
+import {
+  invalidateClientsCache,
+  saveFinancialEntry,
+  type FinancialEntry,
+} from "@/lib/clients";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -46,6 +50,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     await saveFinancialEntry(id, entry);
+    invalidateClientsCache();
     revalidatePath("/");
     revalidatePath("/financeiro");
     revalidatePath(`/cliente/${id}`);

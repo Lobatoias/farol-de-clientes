@@ -16,8 +16,11 @@ export default async function FinanceiroPage() {
     getClients(),
     loadAllChurnEvents(),
   ]);
-  // Métricas (LTV, NichoBreakdown, editor) excluem clientes que já saíram
-  const clients = allClients.filter((c) => !c.isChurned);
+  // Métricas (LTV, NichoBreakdown, editor) excluem clientes que já saíram.
+  // Strip meetingNotes — financeiro não exibe, e payload RSC fica grande à toa.
+  const clients = allClients
+    .filter((c) => !c.isChurned)
+    .map((c) => ({ ...c, meetingNotes: undefined }));
 
   // Saídas: agrega por buckets + motivos dos últimos 12 meses
   const buckets = buildChurnBuckets(churnEvents);
