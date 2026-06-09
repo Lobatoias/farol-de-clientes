@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Lightbulb, LayoutDashboard, Compass, DollarSign, UserMinus, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CommandPalette } from "@/components/command-palette";
 
 const items = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -26,15 +27,15 @@ export function TopNav() {
   if (pathname === "/login") return null;
   return (
     <header className="border-b border-[color:var(--border)] bg-[color:var(--card)] sticky top-0 z-40 backdrop-blur-md supports-[backdrop-filter]:bg-[color:var(--card)]/85">
-      <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3 sm:gap-6">
         <Link
           href="/"
-          className="group flex items-center gap-2 font-semibold text-base transition-opacity hover:opacity-80"
+          className="group flex items-center gap-2 font-semibold text-base transition-opacity hover:opacity-80 shrink-0"
         >
           <span className="size-7 rounded-lg bg-gradient-to-br from-emerald-400 via-amber-400 to-rose-500 grid place-items-center shadow-sm transition-transform group-hover:scale-105 group-hover:rotate-3">
             <Lightbulb className="size-4 text-white" strokeWidth={2.5} />
           </span>
-          Farol de Clientes
+          <span className="hidden sm:inline">Farol de Clientes</span>
         </Link>
         <nav className="flex items-center gap-1">
           {items.map((item) => {
@@ -45,8 +46,10 @@ export function TopNav() {
               <Link
                 key={item.href}
                 href={item.href}
+                aria-current={active ? "page" : undefined}
+                title={item.label}
                 className={cn(
-                  "relative flex items-center gap-2 px-3 h-9 rounded-lg text-sm font-medium transition-all duration-200",
+                  "relative flex items-center gap-2 px-2.5 sm:px-3 h-9 rounded-lg text-sm font-medium transition-all duration-200",
                   active
                     ? "bg-[color:var(--muted)] text-[color:var(--foreground)] shadow-sm"
                     : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:var(--muted)]/60"
@@ -58,15 +61,13 @@ export function TopNav() {
                     active ? "scale-110" : "group-hover:scale-105"
                   )}
                 />
-                {item.label}
+                <span className="hidden md:inline">{item.label}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-[color:var(--muted-foreground)] hidden sm:block">
-            MVP · v0.1
-          </span>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <CommandPalette />
           <button
             type="button"
             onClick={handleLogout}

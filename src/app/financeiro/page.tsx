@@ -8,6 +8,8 @@ import { NichoBreakdown } from "@/components/nicho-breakdown";
 import { LTVSection } from "@/components/ltv-section";
 import { ChurnSummary } from "@/components/churn-summary";
 
+export const metadata = { title: "Financeiro" };
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

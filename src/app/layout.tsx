@@ -14,7 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Farol de Clientes",
+  title: {
+    default: "Farol de Clientes",
+    template: "%s · Farol de Clientes",
+  },
   description: "Hub interno de gestão de clientes com semáforo de saúde e IA assistente.",
 };
 

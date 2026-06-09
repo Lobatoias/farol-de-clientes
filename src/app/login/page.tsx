@@ -2,6 +2,8 @@ import { Lightbulb } from "lucide-react";
 import { LoginForm } from "@/components/login-form";
 import { AUTH_ENABLED } from "@/lib/auth";
 
+export const metadata = { title: "Entrar" };
+
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage({

@@ -105,10 +105,11 @@ export function ChurnDialog({
       <div
         className={cn(
           "relative bg-[color:var(--card-elevated)] border border-[color:var(--border)] rounded-2xl shadow-2xl",
-          "w-full max-w-md p-6 space-y-5 animate-fade-up"
+          "w-full max-w-md p-6 space-y-5 animate-fade-up max-h-[92vh] overflow-y-auto"
         )}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="churn-dialog-title"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
@@ -116,7 +117,10 @@ export function ChurnDialog({
               <UserMinus className="size-4 text-rose-600 dark:text-rose-400" />
             </div>
             <div>
-              <h2 className="text-base font-semibold tracking-tight">
+              <h2
+                id="churn-dialog-title"
+                className="text-base font-semibold tracking-tight"
+              >
                 Marcar saída
               </h2>
               <p className="text-xs text-[color:var(--muted-foreground)] mt-0.5">
@@ -144,6 +148,9 @@ export function ChurnDialog({
             </label>
             <input
               id="churn-date"
+              // Foco inicial no primeiro campo do form (a11y)
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
               type="date"
               value={churnedAt}
               onChange={(e) => setChurnedAt(e.target.value)}
@@ -251,7 +258,9 @@ export function ChurnDialog({
           </div>
 
           {error && (
-            <p className="text-xs text-rose-600 dark:text-rose-400">⚠️ {error}</p>
+            <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
+              ⚠️ {error}
+            </p>
           )}
         </div>
 

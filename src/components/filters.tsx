@@ -13,6 +13,14 @@ interface FiltersProps {
 
 const STATUS_ORDER: Status[] = ["vermelho", "amarelo", "verde"];
 
+/** Busca acento-insensível: "joao" acha "João" */
+function normalize(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
 export function Filters({ clients, onChange }: FiltersProps) {
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<Set<Status>>(new Set());
@@ -21,8 +29,15 @@ export function Filters({ clients, onChange }: FiltersProps) {
   const owners = Array.from(new Set(clients.map((c) => c.owner))).sort();
 
   function apply(nextQuery = query, nextStatuses = statuses, nextOwner = owner) {
+    const q = normalize(nextQuery);
     const filtered = clients.filter((c) => {
-      if (nextQuery && !c.name.toLowerCase().includes(nextQuery.toLowerCase())) return false;
+      if (
+        q &&
+        !normalize(c.name).includes(q) &&
+        !(c.niche && normalize(c.niche).includes(q)) &&
+        !(c.owner && normalize(c.owner).includes(q))
+      )
+        return false;
       if (nextStatuses.size > 0 && !nextStatuses.has(c.status)) return false;
       if (nextOwner !== "todos" && c.owner !== nextOwner) return false;
       return true;
@@ -53,7 +68,8 @@ export function Filters({ clients, onChange }: FiltersProps) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[color:var(--muted-foreground)]" />
         <input
           type="text"
-          placeholder="Buscar cliente..."
+          aria-label="Buscar por cliente, nicho ou responsável"
+          placeholder="Buscar cliente, nicho ou CSM…"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -72,6 +88,7 @@ export function Filters({ clients, onChange }: FiltersProps) {
             <button
               key={s}
               onClick={() => toggleStatus(s)}
+              aria-pressed={active}
               className={cn(
                 "inline-flex items-center gap-1.5 h-10 px-3 rounded-lg text-xs font-medium border transition-all duration-150 hover:-translate-y-0.5",
                 active

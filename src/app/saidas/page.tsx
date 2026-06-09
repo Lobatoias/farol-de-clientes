@@ -8,6 +8,8 @@ import { ChurnAIInsights } from "@/components/churn-ai-insights";
 import { ChurnBreakdown } from "@/components/churn-breakdown";
 import { formatBRL, formatDate } from "@/lib/utils";
 
+export const metadata = { title: "Saídas" };
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

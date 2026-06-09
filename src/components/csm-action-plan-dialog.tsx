@@ -102,6 +102,7 @@ export function CsmActionPlanDialog({
         )}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="csm-plan-dialog-title"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
@@ -113,7 +114,10 @@ export function CsmActionPlanDialog({
               <p className="text-[11px] uppercase tracking-wider text-[color:var(--muted-foreground)] font-semibold">
                 Plano de ação
               </p>
-              <h2 className="text-lg font-bold tracking-tight truncate">
+              <h2
+                id="csm-plan-dialog-title"
+                className="text-lg font-bold tracking-tight truncate"
+              >
                 {csm}
               </h2>
               {preview && (
@@ -187,7 +191,10 @@ export function CsmActionPlanDialog({
 
         {/* Erro */}
         {error && !pending && (
-          <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/20 p-4 flex items-start gap-3">
+          <div
+            role="alert"
+            className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/60 dark:bg-amber-950/20 p-4 flex items-start gap-3"
+          >
             <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <div className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
               <p className="font-medium mb-1">Falha ao gerar</p>

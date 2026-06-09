@@ -122,8 +122,20 @@ export function ContentCard({ content, onEdit }: ContentCardProps) {
       setCopyOK(true);
       setTimeout(() => setCopyOK(false), 2000);
     } catch {
-      // Fallback: select + execCommand (raro)
-      prompt("Copie o link:", url);
+      // Fallback quando a Clipboard API está bloqueada (http, permissões)
+      const el = document.createElement("textarea");
+      el.value = url;
+      el.style.position = "fixed";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.select();
+      try {
+        document.execCommand("copy");
+        setCopyOK(true);
+        setTimeout(() => setCopyOK(false), 2000);
+      } finally {
+        el.remove();
+      }
     }
   }
 
@@ -266,6 +278,7 @@ export function ContentCard({ content, onEdit }: ContentCardProps) {
                 disabled={pending}
                 className="inline-flex items-center gap-1 text-[11px] px-2 h-7 rounded-md border border-[color:var(--border)] hover:bg-[color:var(--muted)] transition-colors text-[color:var(--muted-foreground)]"
                 title="Voltar pra produção"
+                aria-label="Voltar pra produção"
               >
                 <RotateCcw className="size-3" />
               </button>
@@ -308,13 +321,14 @@ export function ContentCard({ content, onEdit }: ContentCardProps) {
             disabled={pending}
             className="inline-flex items-center gap-1 text-[11px] px-2 h-7 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-700 dark:hover:text-rose-300 text-[color:var(--muted-foreground)] transition-colors ml-auto"
             title="Apagar"
+            aria-label="Apagar conteúdo"
           >
             <Trash2 className="size-3" />
           </button>
         </div>
 
         {error && (
-          <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">
+          <p role="alert" className="text-[11px] text-rose-600 dark:text-rose-400 mt-1">
             ⚠️ {error}
           </p>
         )}

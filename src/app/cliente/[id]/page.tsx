@@ -29,6 +29,18 @@ import { cn, formatBRL, formatDate, formatRelative, statusConfig } from "@/lib/u
 
 export const dynamic = "force-dynamic";
 
+// Nome do cliente na aba do navegador — getClientById é cacheado (30s),
+// então isso não custa um fetch extra ao ClickUp.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const client = await getClientById(id);
+  return { title: client ? client.name : "Cliente" };
+}
+
 export default async function ClientDetailPage({
   params,
 }: {

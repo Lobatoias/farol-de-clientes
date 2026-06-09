@@ -126,6 +126,7 @@ export function ContentDialog({
         )}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="content-dialog-title"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
@@ -133,7 +134,10 @@ export function ContentDialog({
             <p className="text-[11px] uppercase tracking-wider text-[color:var(--muted-foreground)] font-semibold">
               {editing ? "Editar conteúdo" : "Novo conteúdo"}
             </p>
-            <h2 className="text-lg font-bold tracking-tight">
+            <h2
+              id="content-dialog-title"
+              className="text-lg font-bold tracking-tight"
+            >
               {editing ? editing.title : "Criar publicação"}
             </h2>
           </div>
@@ -152,6 +156,9 @@ export function ContentDialog({
           {/* Título */}
           <Field label="Título *">
             <input
+              // Foco inicial no primeiro campo do form (a11y)
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -235,7 +242,9 @@ export function ContentDialog({
           </Field>
 
           {error && (
-            <p className="text-xs text-rose-600 dark:text-rose-400">⚠️ {error}</p>
+            <p role="alert" className="text-xs text-rose-600 dark:text-rose-400">
+              ⚠️ {error}
+            </p>
           )}
         </div>
 

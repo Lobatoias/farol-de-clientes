@@ -8,6 +8,8 @@ import { StrategicViewBlock } from "@/components/strategic-view";
 import { CsmPerformance } from "@/components/csm-performance";
 import { formatDate } from "@/lib/utils";
 
+export const metadata = { title: "Estratégico" };
+
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 

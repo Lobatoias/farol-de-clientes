@@ -246,7 +246,7 @@ export function ActionChecklistDialog({
             />
           </div>
           {error && (
-            <p className="text-[11px] text-rose-600 dark:text-rose-400">
+            <p role="alert" className="text-[11px] text-rose-600 dark:text-rose-400">
               ⚠️ {error}
             </p>
           )}

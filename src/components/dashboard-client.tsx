@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { SearchX } from "lucide-react";
 import { Filters } from "@/components/filters";
 import { ClientCard } from "@/components/client-card";
 import type { Client } from "@/lib/types";
@@ -13,6 +14,8 @@ interface DashboardClientProps {
 
 export function DashboardClient({ clients }: DashboardClientProps) {
   const [filtered, setFiltered] = useState<Client[]>(clients);
+  // Incrementar a key remonta <Filters> com estado zerado (CTA do empty state)
+  const [filtersKey, setFiltersKey] = useState(0);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -22,12 +25,32 @@ export function DashboardClient({ clients }: DashboardClientProps) {
     });
   }, [filtered]);
 
+  function clearFilters() {
+    setFiltersKey((k) => k + 1);
+    setFiltered(clients);
+  }
+
   return (
     <div className="space-y-4">
-      <Filters clients={clients} onChange={setFiltered} />
+      <Filters key={filtersKey} clients={clients} onChange={setFiltered} />
       {sorted.length === 0 ? (
-        <div className="text-center py-12 text-sm text-[color:var(--muted-foreground)]">
-          Nenhum cliente bate com os filtros.
+        <div className="text-center py-14 space-y-3 animate-fade-in">
+          <div className="size-12 rounded-2xl bg-[color:var(--muted)] grid place-items-center mx-auto">
+            <SearchX className="size-5 text-[color:var(--muted-foreground)]" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Nenhum cliente encontrado</p>
+            <p className="text-xs text-[color:var(--muted-foreground)]">
+              Nenhum cliente bate com a busca e os filtros atuais.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="text-xs font-medium px-3 h-8 rounded-md border border-[color:var(--border)] hover:bg-[color:var(--muted)] transition-colors"
+          >
+            Limpar filtros
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">

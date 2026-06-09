@@ -40,6 +40,44 @@ body {
   font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* === A11y / affordance global ==================================== */
+
+/* Anel de foco visível pra navegação por teclado em qualquer elemento
+   que não defina o próprio (inputs já têm focus:ring próprio). */
+:focus-visible {
+  outline: 2px solid rgb(59 130 246 / 0.65); /* blue-500 */
+  outline-offset: 2px;
+}
+
+/* Tailwind v4 reseta buttons pra cursor:default — devolve a affordance */
+button:not(:disabled),
+[role="button"]:not(:disabled) {
+  cursor: pointer;
+}
+
+::selection {
+  background: rgb(59 130 246 / 0.3);
+}
+
+/* Scrollbar discreta, coerente com o tema (Chrome/Edge + Firefox) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* === Micro-animations ============================================ */
 
 @keyframes fade-up {
