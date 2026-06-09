@@ -113,3 +113,47 @@ create index if not exists idx_churn_events_task on churn_events (task_id);
 create index if not exists idx_churn_events_date on churn_events (churned_at desc);
 
 alter table churn_events disable row level security;
+
+-- ============================================================
+-- Tabela: contents
+-- Calendário de conteúdos por cliente (post / reel / story / ad).
+-- Cada conteúdo passa pelo workflow:
+--   em_producao → aguardando_aprovacao → agendado → publicado
+--                                      ↓
+--                          em_producao (cliente pediu alteração)
+--
+-- share_token: cada conteúdo tem URL pública /aprovacao/<token>
+-- onde o cliente final aprova ou solicita alteração SEM login.
+-- ============================================================
+
+create table if not exists contents (
+  id bigserial primary key,
+  task_id text not null,
+  title text not null,
+  kind text not null check (kind in ('post','reel','story','ad','carousel')),
+  status text not null default 'em_producao'
+    check (status in ('em_producao','aguardando_aprovacao','agendado','publicado')),
+  scheduled_at date,
+  image_url text,
+  caption text,
+  share_token text unique,
+  share_expires_at timestamptz,
+  client_decision text check (client_decision in ('approved','rejected') or client_decision is null),
+  client_comment text,
+  client_decided_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_contents_task on contents (task_id);
+create index if not exists idx_contents_status on contents (status);
+create index if not exists idx_contents_token on contents (share_token)
+  where share_token is not null;
+create index if not exists idx_contents_scheduled on contents (scheduled_at desc nulls last);
+
+drop trigger if exists trg_contents_updated_at on contents;
+create trigger trg_contents_updated_at
+  before update on contents
+  for each row execute function set_updated_at();
+
+alter table contents disable row level security;

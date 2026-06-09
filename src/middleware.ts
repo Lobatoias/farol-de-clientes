@@ -24,6 +24,8 @@ export function middleware(req: NextRequest) {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/public") ||
+    pathname.startsWith("/aprovacao") ||
     pathname === "/login" ||
     pathname === "/favicon.ico"
   ) {

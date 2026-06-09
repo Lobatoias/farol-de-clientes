@@ -17,6 +17,8 @@ import { AIPanel } from "@/components/ai-panel";
 import { Timeline } from "@/components/timeline";
 import { MeetingNotes } from "@/components/meeting-notes";
 import { ClientChurnSection } from "@/components/client-churn-section";
+import { ClientContentsSection } from "@/components/client-contents-section";
+import { listContentsByClient } from "@/lib/contents";
 import { cn, formatBRL, formatDate, formatRelative, statusConfig } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +29,10 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const client = await getClientById(id);
+  const [client, contents] = await Promise.all([
+    getClientById(id),
+    listContentsByClient(id),
+  ]);
   if (!client) notFound();
 
   const analysis = getClientAnalysis(client);
@@ -230,6 +235,13 @@ export default async function ClientDetailPage({
           </div>
         </div>
       </div>
+
+      {/* Calendário de conteúdos (orgânicos) */}
+      <ClientContentsSection
+        clientId={client.id}
+        clientName={client.name}
+        contents={contents}
+      />
 
       {/* Timeline */}
       <div className="space-y-4 animate-fade-up stagger-6">

@@ -38,6 +38,26 @@ export interface FinancialRow {
 
 // === Tipos da tabela `churn_events` =================================
 
+// === Tipos da tabela `contents` ====================================
+
+export interface ContentRow {
+  id: number;
+  task_id: string;
+  title: string;
+  kind: string;
+  status: string;
+  scheduled_at: string | null;
+  image_url: string | null;
+  caption: string | null;
+  share_token: string | null;
+  share_expires_at: string | null;
+  client_decision: string | null;
+  client_comment: string | null;
+  client_decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ChurnRow {
   id: number;
   task_id: string;

@@ -1,5 +1,65 @@
 export type Status = "verde" | "amarelo" | "vermelho";
 
+// ============================================================
+// Conteúdos — calendário editorial por cliente
+// ============================================================
+
+export const CONTENT_KINDS = [
+  "post",
+  "reel",
+  "story",
+  "ad",
+  "carousel",
+] as const;
+
+export type ContentKind = (typeof CONTENT_KINDS)[number];
+
+export const CONTENT_STATUSES = [
+  "em_producao",
+  "aguardando_aprovacao",
+  "agendado",
+  "publicado",
+] as const;
+
+export type ContentStatus = (typeof CONTENT_STATUSES)[number];
+
+export type ClientDecision = "approved" | "rejected";
+
+export interface Content {
+  id: number;
+  taskId: string;
+  title: string;
+  kind: ContentKind;
+  status: ContentStatus;
+  scheduledAt?: string; // ISO date YYYY-MM-DD
+  imageUrl?: string;
+  caption?: string;
+  shareToken?: string;
+  shareExpiresAt?: string; // ISO timestamptz
+  clientDecision?: ClientDecision;
+  clientComment?: string;
+  clientDecidedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Labels em pt-BR pros kinds. */
+export const CONTENT_KIND_LABEL: Record<ContentKind, string> = {
+  post: "Post",
+  reel: "Reel",
+  story: "Story",
+  ad: "Anúncio",
+  carousel: "Carrossel",
+};
+
+/** Labels em pt-BR pros status. */
+export const CONTENT_STATUS_LABEL: Record<ContentStatus, string> = {
+  em_producao: "Em produção",
+  aguardando_aprovacao: "Aguardando aprovação",
+  agendado: "Agendado",
+  publicado: "Publicado",
+};
+
 export const CHURN_REASONS = [
   "Resultado insuficiente / ROI baixo",
   "Reclamação operacional (atendimento, prazo, qualidade)",
