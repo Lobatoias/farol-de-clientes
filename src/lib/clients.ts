@@ -38,6 +38,11 @@ const FINANCIALS_PATH = path.join(process.cwd(), "data", "financials.local.json"
 // === Supabase loader (production-ready) =============================
 
 import { getSupabase, type FinancialRow } from "./supabase";
+import {
+  loadClientsSnapshot,
+  saveClientsSnapshot,
+  deleteClientsSnapshot,
+} from "./clients-snapshot";
 import { buildChurnIndex, loadAllChurnEvents } from "./churn";
 
 function rowToEntry(row: FinancialRow): FinancialEntry {
@@ -352,6 +357,11 @@ function buildClientFromFolderOnly(folder: CKFolder, operationalTasks: CKTask[] 
 
 let inflightGetClients: Promise<Client[]> | null = null;
 let clientsCache: { data: Client[]; expiresAt: number } | null = null;
+/**
+ * Janela pós-mutação em que o snapshot compartilhado é ignorado
+ * (acabou de ficar velho; o delete dele é assíncrono).
+ */
+let snapshotBypassUntil = 0;
 
 /**
  * TTL curto pra balancear velocidade vs consistência multi-instância.
@@ -384,13 +394,39 @@ export async function getClients(): Promise<Client[]> {
       // /cliente/[id] retornam 404 (IDs reais não existem nos mocks).
       if (data !== mockClients) {
         clientsCache = { data, expiresAt: Date.now() + CLIENTS_CACHE_TTL_MS };
+        // Mantém o snapshot compartilhado fresco pras outras instâncias
+        void saveClientsSnapshot(data);
       }
       return data;
     })
     .finally(() => {
       inflightGetClients = null;
     });
-  return inflightGetClients;
+
+  // 3) Stale-while-revalidate entre instâncias: sem cache local, corre o
+  // snapshot do Supabase (~300ms) contra o refresh do ClickUp (2-8s).
+  // Quem chegar primeiro responde; o refresh segue e atualiza o cache.
+  const refresh = inflightGetClients;
+  if (now >= snapshotBypassUntil) {
+    const winner = await Promise.race([
+      loadClientsSnapshot().then((data) =>
+        data ? { src: "snapshot" as const, data } : null
+      ),
+      refresh.then((data) => ({ src: "fresh" as const, data })),
+    ]).catch(() => null);
+    if (winner) {
+      if (winner.src === "snapshot" && !clientsCache) {
+        // Cacheia o snapshot; o refresh sobrescreve com dados frescos ao chegar
+        clientsCache = {
+          data: winner.data,
+          expiresAt: Date.now() + CLIENTS_CACHE_TTL_MS,
+        };
+      }
+      return winner.data;
+    }
+    // winner null = snapshot indisponível e ClickUp ainda buscando
+  }
+  return refresh;
 }
 
 async function doGetClients(): Promise<Client[]> {
@@ -561,6 +597,10 @@ export async function getChurnedClients(): Promise<Client[]> {
 export function invalidateClientsCache(): void {
   clientsCache = null;
   inflightGetClients = null;
+  // Snapshot compartilhado também está velho: ignora por 60s nesta
+  // instância e apaga no Supabase (o próximo fetch real regrava).
+  snapshotBypassUntil = Date.now() + 60_000;
+  void deleteClientsSnapshot();
 }
 
 export interface CoverageStats {

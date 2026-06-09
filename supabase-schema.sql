@@ -157,3 +157,17 @@ create trigger trg_contents_updated_at
   for each row execute function set_updated_at();
 
 alter table contents disable row level security;
+
+-- === Snapshot compartilhado da lista de clientes =====================
+-- Cache cross-instância (stale-while-revalidate): toda busca real no
+-- ClickUp grava o resultado aqui; instâncias Vercel sem cache em memória
+-- leem daqui (~300ms) em vez de refazer o fetch completo (3-8s).
+-- 1 linha só (id=1), payload jsonb com o array de clientes.
+
+create table if not exists clients_snapshot (
+  id integer primary key,
+  payload jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table clients_snapshot disable row level security;
