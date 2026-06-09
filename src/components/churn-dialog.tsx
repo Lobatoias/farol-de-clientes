@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { X, UserMinus, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,9 @@ export function ChurnDialog({
   const [details, setDetails] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
+  // Garante que createPortal só roda no client (não no SSR)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (open) {
@@ -72,11 +76,11 @@ export function ChurnDialog({
     });
   }
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 grid place-items-center p-4 animate-fade-in"
+      className="fixed inset-0 z-[100] grid place-items-center p-4 animate-fade-in"
       style={{ backdropFilter: "blur(4px)" }}
     >
       <button
@@ -209,6 +213,7 @@ export function ChurnDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

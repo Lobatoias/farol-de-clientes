@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, CheckCircle2, ListChecks, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,9 @@ export function ActionChecklistDialog({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Garante que createPortal só roda no client (não no SSR)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   // Última versão persistida no servidor (referência) — pra evitar POSTs redundantes
   const lastPersistedRef = useRef<Set<number>>(new Set(initialChecked));
@@ -144,11 +148,11 @@ export function ActionChecklistDialog({
     setChecked(new Set());
   }
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 grid place-items-center p-4 animate-fade-in"
+      className="fixed inset-0 z-[100] grid place-items-center p-4 animate-fade-in"
       style={{ backdropFilter: "blur(4px)" }}
     >
       <button
@@ -320,6 +324,7 @@ export function ActionChecklistDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
