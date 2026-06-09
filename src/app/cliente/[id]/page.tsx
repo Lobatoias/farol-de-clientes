@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
@@ -14,7 +15,12 @@ import { getClientById } from "@/lib/clients";
 import { getClientAnalysis } from "@/lib/mock-ai";
 import { StatusBadge } from "@/components/status-badge";
 import { AIPanel } from "@/components/ai-panel";
-import { Timeline } from "@/components/timeline";
+import {
+  TimelineSection,
+  TimelineSectionSkeleton,
+  OpenTicketsTile,
+  OpenTicketsTileSkeleton,
+} from "@/components/timeline-section";
 import { MeetingNotes } from "@/components/meeting-notes";
 import { ClientChurnSection } from "@/components/client-churn-section";
 import { ClientContentsSection } from "@/components/client-contents-section";
@@ -141,14 +147,9 @@ export default async function ClientDetailPage({
               : "danger"
           }
         />
-        <KpiTile
-          label="Tickets abertos"
-          value={client.openTickets.toString()}
-          icon={Ticket}
-          accent={
-            client.openTickets >= 3 ? "danger" : client.openTickets > 0 ? "warn" : "good"
-          }
-        />
+        <Suspense fallback={<OpenTicketsTileSkeleton />}>
+          <OpenTicketsTile clientId={client.id} />
+        </Suspense>
         <KpiTile
           label="Próxima reunião"
           value={client.nextMeetingAt ? formatDate(client.nextMeetingAt) : "—"}
@@ -243,11 +244,13 @@ export default async function ClientDetailPage({
         contents={contents}
       />
 
-      {/* Timeline */}
+      {/* Timeline — streaming via Suspense pra a página renderizar logo */}
       <div className="space-y-4 animate-fade-up stagger-6">
         <h2 className="text-base font-semibold">Histórico operacional</h2>
         <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-6">
-          <Timeline events={client.events} />
+          <Suspense fallback={<TimelineSectionSkeleton />}>
+            <TimelineSection clientId={client.id} />
+          </Suspense>
         </div>
       </div>
     </div>

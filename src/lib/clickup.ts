@@ -145,13 +145,45 @@ export async function listTasksInList(listId: string): Promise<CKTask[]> {
   return data.tasks;
 }
 
+// Cache 30s por folder pra evitar refetch da timeline em toda navegação.
+// Vercel free tier: cada instância tem seu cache; sem invalidação manual
+// porque timeline = dados read-only do ClickUp (não mutamos via app).
+const timelineCache = new Map<
+  string,
+  { data: CKTask[]; expiresAt: number }
+>();
+const inflightTimeline = new Map<string, Promise<CKTask[]>>();
+const TIMELINE_CACHE_TTL_MS = 30_000;
+
 export async function listTasksInFolder(folderId: string): Promise<CKTask[]> {
-  const folder = await getFolder(folderId);
-  const lists = folder.lists ?? [];
-  const all = await Promise.all(
-    lists.map((l) => listTasksInList(l.id).catch(() => []))
-  );
-  return all.flat();
+  const now = Date.now();
+
+  // 1) Cache válido
+  const cached = timelineCache.get(folderId);
+  if (cached && cached.expiresAt > now) return cached.data;
+
+  // 2) Dedup de requests em vôo pro mesmo folder
+  const pending = inflightTimeline.get(folderId);
+  if (pending) return pending;
+
+  const promise = (async () => {
+    const folder = await getFolder(folderId);
+    const lists = folder.lists ?? [];
+    const all = await Promise.all(
+      lists.map((l) => listTasksInList(l.id).catch(() => []))
+    );
+    const data = all.flat();
+    timelineCache.set(folderId, {
+      data,
+      expiresAt: Date.now() + TIMELINE_CACHE_TTL_MS,
+    });
+    return data;
+  })().finally(() => {
+    inflightTimeline.delete(folderId);
+  });
+
+  inflightTimeline.set(folderId, promise);
+  return promise;
 }
 
 // === Custom field extraction =======================================

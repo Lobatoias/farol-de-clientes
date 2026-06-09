@@ -484,11 +484,56 @@ async function enrichClientWithTimeline(client: Client): Promise<Client> {
   }
 }
 
+/**
+ * Versão "leve" — não busca timeline. Usa só dados do master list (já cacheados).
+ * Retorna em ~50ms quando o cache de getClients() está quente.
+ *
+ * Para a página de detalhe: use isso pro render rápido E carregue
+ * a timeline em paralelo via getClientTimeline() dentro de um Suspense.
+ */
 export async function getClientById(id: string): Promise<Client | undefined> {
   const all = await getClients();
-  const c = all.find((c) => c.id === id);
+  return all.find((c) => c.id === id);
+}
+
+/**
+ * Versão "rica" — inclui timeline (custosa). Use só onde realmente precisar.
+ * Geralmente é melhor chamar getClientById() + getClientTimeline() em paralelo
+ * via Suspense pra a página renderizar enquanto a timeline carrega.
+ */
+export async function getClientByIdWithTimeline(
+  id: string
+): Promise<Client | undefined> {
+  const c = await getClientById(id);
   if (!c) return undefined;
   return enrichClientWithTimeline(c);
+}
+
+/**
+ * Carrega só a timeline + tickets abertos pra um cliente.
+ * Use dentro de um Suspense pra streaming.
+ */
+export async function getClientTimeline(
+  id: string
+): Promise<{ events: ClientEvent[]; openTickets: number } | null> {
+  const c = await getClientById(id);
+  if (!c || !c.clickupFolderId) return { events: [], openTickets: 0 };
+  try {
+    const operationalTasks = await listTasksInFolder(c.clickupFolderId);
+    return {
+      events: buildEventsFromFolderTasks(operationalTasks),
+      openTickets: operationalTasks.filter(
+        (t) =>
+          t.status?.status &&
+          !["complete", "closed", "done"].includes(
+            t.status.status.toLowerCase()
+          )
+      ).length,
+    };
+  } catch (err) {
+    console.error("[Farol] getClientTimeline falhou pra", c.name, err);
+    return { events: [], openTickets: 0 };
+  }
 }
 
 export function isUsingMockData(): boolean {
