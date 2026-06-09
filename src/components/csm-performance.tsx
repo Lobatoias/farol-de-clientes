@@ -2,10 +2,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Users, UserMinus, TrendingDown, Wallet, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, UserMinus, TrendingDown, Wallet, ChevronDown, ChevronRight, Target } from "lucide-react";
 import { cn, formatBRL } from "@/lib/utils";
 import type { CsmStat } from "@/lib/churn-analytics";
 import { PeriodPicker, type DateRange } from "./period-picker";
+import { CsmActionPlanDialog } from "./csm-action-plan-dialog";
+
+/** Acima desse limite, mostra botão "Plano de ação" na linha. */
+const ACTION_PLAN_THRESHOLD = 0.3;
 
 interface CsmPerformanceProps {
   stats: CsmStat[];
@@ -18,6 +22,7 @@ export function CsmPerformance({ stats, period }: CsmPerformanceProps) {
   const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [actionPlanFor, setActionPlanFor] = useState<CsmStat | null>(null);
 
   function handlePeriodChange(range: DateRange) {
     const params = new URLSearchParams(searchParams.toString());
@@ -107,11 +112,17 @@ export function CsmPerformance({ stats, period }: CsmPerformanceProps) {
                 R$ perdido
               </th>
               <th className="text-right px-4 py-3">Churn rate</th>
+              <th className="text-right px-4 py-3 w-px whitespace-nowrap"></th>
             </tr>
           </thead>
           <tbody>
             {visible.map((s, i) => (
-              <CsmRow key={s.csm} stat={s} rank={i + 1} />
+              <CsmRow
+                key={s.csm}
+                stat={s}
+                rank={i + 1}
+                onOpenActionPlan={() => setActionPlanFor(s)}
+              />
             ))}
           </tbody>
         </table>
@@ -135,12 +146,39 @@ export function CsmPerformance({ stats, period }: CsmPerformanceProps) {
           </button>
         )}
       </div>
+
+      {/* Modal de plano de ação por CSM */}
+      <CsmActionPlanDialog
+        open={actionPlanFor !== null}
+        onClose={() => setActionPlanFor(null)}
+        csm={actionPlanFor?.csm ?? ""}
+        preview={
+          actionPlanFor
+            ? {
+                activeCount: actionPlanFor.activeCount,
+                churnCount: actionPlanFor.churnCount,
+                churnRatePct: actionPlanFor.churnRate * 100,
+                activeMrr: actionPlanFor.activeMrr,
+                churnMrrLost: actionPlanFor.churnMrrLost,
+              }
+            : undefined
+        }
+      />
     </section>
   );
 }
 
-function CsmRow({ stat, rank }: { stat: CsmStat; rank: number }) {
+function CsmRow({
+  stat,
+  rank,
+  onOpenActionPlan,
+}: {
+  stat: CsmStat;
+  rank: number;
+  onOpenActionPlan: () => void;
+}) {
   const churnRatePct = Math.round(stat.churnRate * 100);
+  const isCritical = stat.churnRate >= ACTION_PLAN_THRESHOLD;
   const rateColor =
     churnRatePct >= 30
       ? "text-rose-600 dark:text-rose-400"
@@ -151,10 +189,22 @@ function CsmRow({ stat, rank }: { stat: CsmStat; rank: number }) {
       : "text-emerald-600 dark:text-emerald-400";
 
   return (
-    <tr className="border-b border-[color:var(--border)] last:border-0 hover:bg-[color:var(--muted)]/30 transition-colors">
+    <tr
+      className={cn(
+        "border-b border-[color:var(--border)] last:border-0 hover:bg-[color:var(--muted)]/30 transition-colors",
+        isCritical && "bg-rose-50/30 dark:bg-rose-950/15"
+      )}
+    >
       <td className="px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <span className="size-6 rounded-md bg-[color:var(--muted)] grid place-items-center text-[10px] font-bold tabular-nums shrink-0">
+          <span
+            className={cn(
+              "size-6 rounded-md grid place-items-center text-[10px] font-bold tabular-nums shrink-0",
+              isCritical
+                ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                : "bg-[color:var(--muted)]"
+            )}
+          >
             {rank}
           </span>
           <span className="font-medium truncate">{stat.csm}</span>
@@ -191,6 +241,21 @@ function CsmRow({ stat, rank }: { stat: CsmStat; rank: number }) {
       </td>
       <td className={cn("px-4 py-3 text-right tabular-nums font-medium", rateColor)}>
         {churnRatePct}%
+      </td>
+      <td className="px-4 py-3 text-right">
+        {isCritical ? (
+          <button
+            type="button"
+            onClick={onOpenActionPlan}
+            className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md bg-rose-600 text-white text-[11px] font-medium hover:bg-rose-700 transition-colors whitespace-nowrap"
+            title={`Churn rate ${churnRatePct}% — gerar plano de ação com IA`}
+          >
+            <Target className="size-3" />
+            Plano de ação
+          </button>
+        ) : (
+          <span className="text-[color:var(--muted-foreground)]/40 text-xs">—</span>
+        )}
       </td>
     </tr>
   );
