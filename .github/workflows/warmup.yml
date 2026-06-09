@@ -1,0 +1,27 @@
+# Mantém a função Vercel quente pingando /api/ping a cada 5 minutos.
+# Por que GitHub Actions e não Vercel Cron: o plano Hobby da Vercel só
+# permite cron DIÁRIO — qualquer schedule mais frequente faz o deploy falhar.
+#
+# Nota: o GitHub pode atrasar schedules em horários de pico (5-15 min real),
+# e desativa o cron se o repo ficar 60 dias sem commits — basta reativar
+# na aba Actions se isso acontecer.
+
+name: Warmup Vercel
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping /api/ping
+        run: |
+          code=$(curl -s -o /tmp/ping.json -w "%{http_code}" --max-time 30 https://farol-de-clientes.vercel.app/api/ping || echo "000")
+          echo "HTTP $code"
+          cat /tmp/ping.json 2>/dev/null || true
+          # Não falha o job em erro transitório — warmup é best-effort
+          exit 0
