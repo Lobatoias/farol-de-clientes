@@ -19,7 +19,7 @@ Todas as env vars que o Farol usa. Coloque tudo em **`.env.local`** na raiz do p
 | `FAROL_PASSWORD` | ⚠️ Recomendado | Sem isso, app fica aberto sem auth |
 | `FAROL_SECRET` | ⚠️ Recomendado | Pra assinar o cookie de sessão |
 | `CHATWOOT_*` | Opcional | Só pra ativar alerta WhatsApp em vermelhos |
-| `ANTHROPIC_API_KEY` | Opcional | Futuro — substituir mocks de IA |
+| `ANTHROPIC_API_KEY` | Recomendado | Liga análise de padrões de churn em /saidas |
 
 ---
 
@@ -163,14 +163,35 @@ Nome do gestor — usado se for criar contato automaticamente via `TARGET_PHONE`
 
 ---
 
-## 5 · Anthropic — IA real (futuro)
+## 5 · Anthropic — IA real
 
 ### `ANTHROPIC_API_KEY`
-Chave da API da Anthropic. Hoje o Farol usa mocks de IA na seção Estratégica e no painel do cliente. Quando configurar essa chave (futuro), os mocks serão substituídos por chamadas reais ao Claude.
 
-Gere em: https://console.anthropic.com/settings/keys
+Chave da API da Anthropic — sem ela, a **análise de padrões de churn** em `/saidas` aparece com botão "Gerar análise" que retorna erro `503` explicando que falta a key. O resto do app funciona normal (sem essa feature).
 
-Formato: `sk-ant-XXXX...`
+**Como pegar:**
+1. https://console.anthropic.com/settings/keys
+2. **Create Key** → dá um nome (ex: "Farol Vela Latina")
+3. Copia (a key só aparece UMA vez)
+
+**Formato:** `sk-ant-XXXX...`
+
+**Onde colocar:**
+- Local: no `.env.local`
+- Produção: https://vercel.com → projeto `farol-de-clientes` → Settings → Environment Variables → adicionar `ANTHROPIC_API_KEY` (marca Production + Preview + Development) → salvar → Vercel redeploya sozinho
+
+**O que ela faz:**
+
+Quando você clica "Gerar análise" em `/saidas`, o Farol monta um prompt com:
+- Todos os eventos de saída (motivos, detalhes, CSM da época, MRR perdido)
+- Notas das últimas reuniões dos clientes que saíram (truncadas a 2.5k chars cada)
+- Clientes ATIVOS em risco (status amarelo/vermelho) com notas (1.5k chars cada)
+
+E pede pro Claude Sonnet 4.5 devolver JSON com: resumo executivo · padrões sistêmicos · frases recorrentes pré-saída · sinais antecipados em ativos · ações preventivas operacionais (nunca desconto, política da casa).
+
+**Custo:** ~ R$ 0,05 a R$ 0,30 por análise dependendo do volume de notas. Cache de 1h evita rodar de novo se nada mudou.
+
+**Modelo usado:** `claude-sonnet-4-5` (definido em `src/lib/anthropic.ts`)
 
 ---
 
