@@ -83,15 +83,23 @@ export function ChurnBreakdown({ events }: ChurnBreakdownProps) {
     [events, dim, dimMeta.emptyLabel]
   );
 
-  const totalMrrLost = stats.reduce((s, x) => s + x.monthlyRevenueLost, 0);
+  // Total de MRR perdido ÚNICO (cada evento conta 1x) — mostrado no centro.
+  // Em multi-motivos, somar stats duplica (evento com 2 motivos conta 2x).
+  // Soma direto dos eventos pra ter o número real.
+  const uniqueMrrLost = events.reduce(
+    (s, e) => s + (e.monthlyRevenueAtTime ?? 0),
+    0
+  );
+  // Soma dos buckets (= uniqueMrrLost em csm/niche, > em reason multi). É o
+  // denominador correto pra que as % somem 100% dentro de cada toggle.
+  const bucketSumMrr = stats.reduce((s, x) => s + x.monthlyRevenueLost, 0);
   const totalCount = events.length;
-  // Mostra por R$ perdido se houver dado financeiro suficiente
   const groupsWithMrr = stats.filter((s) => s.monthlyRevenueLost > 0).length;
   const hasMeaningfulRevenue =
-    totalMrrLost > 0 &&
+    bucketSumMrr > 0 &&
     groupsWithMrr >= Math.max(1, Math.ceil(stats.length * 0.4));
   const showByCount = !hasMeaningfulRevenue;
-  const totalForPct = showByCount ? totalCount : totalMrrLost;
+  const totalForPct = showByCount ? totalCount : bucketSumMrr;
 
   const sorted = [...stats].sort((a, b) =>
     showByCount
@@ -122,7 +130,7 @@ export function ChurnBreakdown({ events }: ChurnBreakdownProps) {
           <p className="text-sm text-[color:var(--muted-foreground)]">
             {showByCount
               ? `${totalCount} ${totalCount === 1 ? "saída" : "saídas"} agrupadas — quem está perdendo mais`
-              : `${formatBRL(totalMrrLost)} de mensalidade perdida agregada`}
+              : `${formatBRL(uniqueMrrLost)} de mensalidade perdida agregada`}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -144,7 +152,7 @@ export function ChurnBreakdown({ events }: ChurnBreakdownProps) {
             centerValue={
               showByCount
                 ? totalCount.toString()
-                : formatBRL(totalMrrLost)
+                : formatBRL(uniqueMrrLost)
             }
             centerLabel={
               showByCount
