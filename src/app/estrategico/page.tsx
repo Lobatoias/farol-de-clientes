@@ -2,7 +2,7 @@ import { getClients, isUsingMockData } from "@/lib/clients";
 import { buildStrategicView } from "@/lib/strategy";
 import { loadAndSyncProgress } from "@/lib/strategy-progress";
 import { loadAllChurnEvents } from "@/lib/churn";
-import { buildChurnBuckets, buildCsmStats } from "@/lib/churn-analytics";
+import { buildCsmStats } from "@/lib/churn-analytics";
 import { SourceBanner } from "@/components/source-banner";
 import { StrategicViewBlock } from "@/components/strategic-view";
 import { CsmPerformance } from "@/components/csm-performance";
@@ -11,13 +11,50 @@ import { formatDate } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function EstrategicoPage() {
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function defaultRange(): { from: string; to: string } {
+  // Default = últimos 30 dias
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  const from = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return { from, to: todayISO() };
+}
+
+interface EstrategicoPageProps {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}
+
+export default async function EstrategicoPage({
+  searchParams,
+}: EstrategicoPageProps) {
+  const sp = await searchParams;
+
+  // Lê e valida o período da URL — fallback pro default se inválido
+  const fallback = defaultRange();
+  const rawFrom = typeof sp.from === "string" && ISO_DATE.test(sp.from) ? sp.from : fallback.from;
+  const rawTo = typeof sp.to === "string" && ISO_DATE.test(sp.to) ? sp.to : fallback.to;
+  // Garante from <= to
+  const period = {
+    from: rawFrom <= rawTo ? rawFrom : rawTo,
+    to: rawFrom <= rawTo ? rawTo : rawFrom,
+  };
+
   const [allClients, churnEvents] = await Promise.all([
     getClients(),
     loadAllChurnEvents(),
   ]);
 
-  // Análise estratégica e progresso só consideram clientes ativos
+  // Análise estratégica só considera clientes ativos
   const activeClients = allClients.filter((c) => !c.isChurned);
   const view = buildStrategicView(activeClients);
   const progressMap = await loadAndSyncProgress(view);
@@ -25,15 +62,11 @@ export default async function EstrategicoPage() {
   const progress: Record<string, number[]> = {};
   for (const [k, v] of progressMap) progress[k] = v;
 
-  // CSM stats: ativos vs saídas dos últimos 12 meses
-  const buckets = buildChurnBuckets(churnEvents);
-  const last12 = buckets.find((b) => b.label === "Últimos 12 meses");
-  const eventsLast12mo = last12
-    ? churnEvents.filter(
-        (e) => e.churnedAt >= last12.from && e.churnedAt <= last12.to
-      )
-    : [];
-  const csmStats = buildCsmStats(activeClients, eventsLast12mo);
+  // Filtra eventos pelo período selecionado e gera CSM stats
+  const eventsInPeriod = churnEvents.filter(
+    (e) => e.churnedAt >= period.from && e.churnedAt <= period.to
+  );
+  const csmStats = buildCsmStats(activeClients, eventsInPeriod);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
@@ -50,7 +83,7 @@ export default async function EstrategicoPage() {
         generatedAt={formatDate(new Date().toISOString())}
       />
 
-      <CsmPerformance stats={csmStats} periodLabel="Últimos 12 meses" />
+      <CsmPerformance stats={csmStats} period={period} />
     </div>
   );
 }

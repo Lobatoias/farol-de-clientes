@@ -1,17 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Users, UserMinus, TrendingDown, Wallet, ChevronDown, ChevronRight } from "lucide-react";
 import { cn, formatBRL } from "@/lib/utils";
 import type { CsmStat } from "@/lib/churn-analytics";
+import { PeriodPicker, type DateRange } from "./period-picker";
 
 interface CsmPerformanceProps {
   stats: CsmStat[];
-  periodLabel: string;
+  period: DateRange;
 }
 
-export function CsmPerformance({ stats, periodLabel }: CsmPerformanceProps) {
+export function CsmPerformance({ stats, period }: CsmPerformanceProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [expanded, setExpanded] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  function handlePeriodChange(range: DateRange) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("from", range.from);
+    params.set("to", range.to);
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}#csm-performance`, {
+        scroll: false,
+      });
+    });
+  }
 
   if (stats.length === 0) return null;
 
@@ -23,18 +40,29 @@ export function CsmPerformance({ stats, periodLabel }: CsmPerformanceProps) {
   const totalChurnMrr = stats.reduce((s, x) => s + x.churnMrrLost, 0);
 
   return (
-    <section className="space-y-3 animate-fade-up stagger-5">
-      <header className="flex items-center gap-2">
-        <div className="size-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 grid place-items-center">
+    <section
+      id="csm-performance"
+      className={cn(
+        "space-y-3 animate-fade-up stagger-5 scroll-mt-20 transition-opacity",
+        isPending && "opacity-60"
+      )}
+    >
+      <header className="flex items-start gap-2 flex-wrap">
+        <div className="size-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 grid place-items-center shrink-0">
           <Users className="size-4 text-blue-600 dark:text-blue-400" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-base font-semibold">Desempenho por responsável</h2>
           <p className="text-xs text-[color:var(--muted-foreground)]">
-            Carteira atual vs saídas {periodLabel.toLowerCase()} · ranqueado por
-            quem está perdendo mais
+            Carteira atual vs saídas no período · ranqueado por quem está
+            perdendo mais
           </p>
         </div>
+        <PeriodPicker
+          value={period}
+          onChange={handlePeriodChange}
+          align="right"
+        />
       </header>
 
       {/* Sumário do time */}
