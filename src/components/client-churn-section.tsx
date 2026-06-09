@@ -76,29 +76,41 @@ export function ClientChurnSection({
           </button>
         </div>
 
-        <dl className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-3 border-t border-rose-200/60 dark:border-rose-900/40">
-          <ChurnFactBox
-            label="Motivo"
-            value={lastChurnEvent.reason}
-            full
-          />
-          <ChurnFactBox
-            label="CSM da época"
-            value={lastChurnEvent.csmAtTime ?? "—"}
-          />
-          <ChurnFactBox
-            label="Mensalidade perdida"
-            value={
-              lastChurnEvent.monthlyRevenueAtTime
-                ? formatBRL(lastChurnEvent.monthlyRevenueAtTime)
-                : "—"
-            }
-          />
-          <ChurnFactBox
-            label="Nicho"
-            value={lastChurnEvent.nicheAtTime ?? "—"}
-          />
-        </dl>
+        <div className="pt-3 border-t border-rose-200/60 dark:border-rose-900/40 space-y-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-rose-800/80 dark:text-rose-300/80 mb-1.5">
+              Motivos ({lastChurnEvent.reasons.length})
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {lastChurnEvent.reasons.map((r) => (
+                <span
+                  key={r}
+                  className="text-xs px-2 py-1 rounded-md bg-rose-100 dark:bg-rose-950/60 text-rose-900 dark:text-rose-200 border border-rose-200 dark:border-rose-900/80"
+                >
+                  {r}
+                </span>
+              ))}
+            </div>
+          </div>
+          <dl className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <ChurnFactBox
+              label="CSM da época"
+              value={lastChurnEvent.csmAtTime ?? "—"}
+            />
+            <ChurnFactBox
+              label="Mensalidade perdida"
+              value={
+                lastChurnEvent.monthlyRevenueAtTime
+                  ? formatBRL(lastChurnEvent.monthlyRevenueAtTime)
+                  : "—"
+              }
+            />
+            <ChurnFactBox
+              label="Nicho"
+              value={lastChurnEvent.nicheAtTime ?? "—"}
+            />
+          </dl>
+        </div>
 
         {lastChurnEvent.reasonDetails && (
           <div className="pt-3 border-t border-rose-200/60 dark:border-rose-900/40">

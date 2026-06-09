@@ -9,15 +9,26 @@ import { getSupabase, type ChurnRow } from "./supabase";
 import type { ChurnEvent, ChurnReason } from "./types";
 import { CHURN_REASONS } from "./types";
 
-function rowToEvent(row: ChurnRow): ChurnEvent {
-  const reason = (CHURN_REASONS as readonly string[]).includes(row.reason)
-    ? (row.reason as ChurnReason)
+function normalizeReason(r: string): ChurnReason {
+  return (CHURN_REASONS as readonly string[]).includes(r)
+    ? (r as ChurnReason)
     : ("Outro" as ChurnReason);
+}
+
+function rowToEvent(row: ChurnRow): ChurnEvent {
+  // Fonte da verdade = `reasons` array. Fallback pro `reason` singular pra
+  // rows antigas (antes da migration multi-motivo).
+  const rawReasons =
+    Array.isArray(row.reasons) && row.reasons.length > 0
+      ? row.reasons
+      : [row.reason];
+  const reasons = rawReasons.map(normalizeReason);
   return {
     id: row.id,
     taskId: row.task_id,
     churnedAt: row.churned_at,
-    reason,
+    reasons,
+    reason: reasons[0],
     reasonDetails: row.reason_details ?? undefined,
     csmAtTime: row.csm_at_time ?? undefined,
     monthlyRevenueAtTime: row.monthly_revenue_at_time ?? undefined,
@@ -63,7 +74,8 @@ export function buildChurnIndex(events: ChurnEvent[]): ChurnIndex {
 export interface RecordChurnInput {
   taskId: string;
   churnedAt: string; // ISO YYYY-MM-DD
-  reason: string;
+  /** Lista de motivos (1+). Cada item deve estar em CHURN_REASONS. */
+  reasons: string[];
   reasonDetails?: string;
   csmAtTime?: string;
   monthlyRevenueAtTime?: number;
@@ -78,15 +90,26 @@ export async function recordChurn(input: RecordChurnInput): Promise<ChurnEvent> 
     );
   }
 
-  // Sanitiza: motivo precisa estar na lista, senão vira "Outro"
-  const reason = (CHURN_REASONS as readonly string[]).includes(input.reason)
-    ? input.reason
-    : "Outro";
+  // Sanitiza: cada motivo precisa estar na lista, senão vira "Outro"
+  // Dedup + filtra vazios
+  const reasonsSet = new Set<string>();
+  for (const r of input.reasons) {
+    if (typeof r === "string" && r.trim()) {
+      const norm = (CHURN_REASONS as readonly string[]).includes(r) ? r : "Outro";
+      reasonsSet.add(norm);
+    }
+  }
+  if (reasonsSet.size === 0) {
+    throw new Error("Pelo menos 1 motivo é obrigatório");
+  }
+  const reasons = [...reasonsSet];
+  const primaryReason = reasons[0];
 
   const row = {
     task_id: input.taskId,
     churned_at: input.churnedAt,
-    reason,
+    reason: primaryReason,
+    reasons,
     reason_details: input.reasonDetails ?? null,
     csm_at_time: input.csmAtTime ?? null,
     monthly_revenue_at_time: input.monthlyRevenueAtTime ?? null,

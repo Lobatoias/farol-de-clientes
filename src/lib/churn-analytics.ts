@@ -99,22 +99,30 @@ export interface ChurnByReason {
   pct: number; // do total de eventos no período
 }
 
-/** Agrupa por motivo dentro de um período (eventos já filtrados). */
+/**
+ * Agrupa por motivo. Eventos multi-motivo aparecem em MAIS DE UM bucket
+ * (um cliente que saiu por "ROI baixo" + "atendimento" conta nos 2).
+ * `pct` é a % de eventos que mencionam esse motivo (denominador = nº de eventos).
+ */
 export function groupByReason(events: ChurnEvent[]): ChurnByReason[] {
   const map = new Map<ChurnReason, { count: number; mrr: number }>();
   for (const e of events) {
-    const cur = map.get(e.reason) ?? { count: 0, mrr: 0 };
-    cur.count += 1;
-    cur.mrr += e.monthlyRevenueAtTime ?? 0;
-    map.set(e.reason, cur);
+    for (const reason of e.reasons) {
+      const cur = map.get(reason) ?? { count: 0, mrr: 0 };
+      cur.count += 1;
+      // MRR perdido é contado UMA VEZ por motivo mencionado — pra somas comparáveis
+      // entre buckets. Ex: cliente R$ 1k que saiu por 2 motivos → R$ 1k em cada.
+      cur.mrr += e.monthlyRevenueAtTime ?? 0;
+      map.set(reason, cur);
+    }
   }
-  const total = events.length || 1;
+  const totalEvents = events.length || 1;
   return [...map.entries()]
     .map(([reason, v]) => ({
       reason,
       count: v.count,
       monthlyRevenueLost: v.mrr,
-      pct: v.count / total,
+      pct: v.count / totalEvents,
     }))
     .sort((a, b) => b.count - a.count);
 }

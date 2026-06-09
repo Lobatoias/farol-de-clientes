@@ -52,7 +52,7 @@ export function ChurnHistoryClient({ events }: ChurnHistoryClientProps) {
     const q = query.trim().toLowerCase();
     return events.filter((e) => {
       if (periodFrom && e.churnedAt < periodFrom) return false;
-      if (reason !== "all" && e.reason !== reason) return false;
+      if (reason !== "all" && !e.reasons.includes(reason as never)) return false;
       if (csm !== "all" && (e.csmAtTime ?? "") !== csm) return false;
       if (q && !e.clientName.toLowerCase().includes(q)) return false;
       return true;
@@ -152,13 +152,18 @@ export function ChurnHistoryClient({ events }: ChurnHistoryClientProps) {
                 >
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="flex-1 min-w-0 space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-semibold truncate">
                           {e.clientName}
                         </span>
-                        <span className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300">
-                          {e.reason}
-                        </span>
+                        {e.reasons.map((r) => (
+                          <span
+                            key={r}
+                            className="text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300"
+                          >
+                            {r}
+                          </span>
+                        ))}
                       </div>
                       <p className="text-xs text-[color:var(--muted-foreground)]">
                         Saiu em{" "}

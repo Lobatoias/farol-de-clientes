@@ -4,6 +4,7 @@ import { getClients } from "@/lib/clients";
 import { loadAllChurnEvents } from "@/lib/churn";
 import { buildChurnBuckets, groupByReason } from "@/lib/churn-analytics";
 import { ChurnHistoryClient } from "@/components/churn-history-client";
+import { ChurnAIInsights } from "@/components/churn-ai-insights";
 import { formatBRL, formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -120,6 +121,9 @@ export default async function SaidasPage() {
           </div>
         </section>
       )}
+
+      {/* Análise de padrões com IA */}
+      <ChurnAIInsights hasEvents={enrichedEvents.length > 0} />
 
       {/* Histórico com filtros (client-side) */}
       <section className="space-y-3 animate-fade-up stagger-3">

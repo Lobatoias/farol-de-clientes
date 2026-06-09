@@ -17,6 +17,12 @@ export interface ChurnEvent {
   id: number;
   taskId: string;
   churnedAt: string; // ISO YYYY-MM-DD
+  /**
+   * Lista de motivos da saída (1 ou mais). Cliente pode sair por
+   * vários motivos simultaneamente. Sempre tem ao menos 1 elemento.
+   */
+  reasons: ChurnReason[];
+  /** Atalho pro primeiro motivo — mantido por compat com chamadas legadas. */
   reason: ChurnReason;
   reasonDetails?: string;
   csmAtTime?: string;

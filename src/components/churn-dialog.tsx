@@ -23,7 +23,7 @@ export function ChurnDialog({
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
   const [churnedAt, setChurnedAt] = useState(today);
-  const [reason, setReason] = useState<string>(CHURN_REASONS[0]);
+  const [reasons, setReasons] = useState<Set<string>>(() => new Set());
   const [details, setDetails] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, startSaving] = useTransition();
@@ -34,7 +34,7 @@ export function ChurnDialog({
   useEffect(() => {
     if (open) {
       setChurnedAt(today);
-      setReason(CHURN_REASONS[0]);
+      setReasons(new Set());
       setDetails("");
       setError(null);
     }
@@ -50,8 +50,21 @@ export function ChurnDialog({
     return () => window.removeEventListener("keydown", handler);
   }, [open, onClose]);
 
+  function toggleReason(r: string) {
+    setReasons((prev) => {
+      const next = new Set(prev);
+      if (next.has(r)) next.delete(r);
+      else next.add(r);
+      return next;
+    });
+  }
+
   function submit() {
     if (saving) return;
+    if (reasons.size === 0) {
+      setError("Selecione ao menos 1 motivo");
+      return;
+    }
     startSaving(async () => {
       try {
         const res = await fetch(`/api/churn/${clientId}`, {
@@ -59,7 +72,7 @@ export function ChurnDialog({
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             churnedAt,
-            reason,
+            reasons: [...reasons],
             reasonDetails: details.trim() || undefined,
           }),
         });
@@ -140,24 +153,72 @@ export function ChurnDialog({
           </div>
 
           <div className="space-y-1.5">
-            <label
-              htmlFor="churn-reason"
-              className="text-[11px] uppercase tracking-wider text-[color:var(--muted-foreground)] font-semibold"
-            >
-              Motivo principal
-            </label>
-            <select
-              id="churn-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full h-10 px-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/60"
-            >
-              {CHURN_REASONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-[11px] uppercase tracking-wider text-[color:var(--muted-foreground)] font-semibold">
+                Motivos da saída
+              </span>
+              <span
+                className={cn(
+                  "text-[10px] tabular-nums",
+                  reasons.size > 0
+                    ? "text-emerald-600 dark:text-emerald-400 font-medium"
+                    : "text-[color:var(--muted-foreground)]"
+                )}
+              >
+                {reasons.size} selecionado{reasons.size === 1 ? "" : "s"}
+              </span>
+            </div>
+            <ul className="space-y-1 max-h-56 overflow-y-auto rounded-lg border border-[color:var(--border)] p-1.5">
+              {CHURN_REASONS.map((r) => {
+                const isChecked = reasons.has(r);
+                return (
+                  <li key={r}>
+                    <button
+                      type="button"
+                      onClick={() => toggleReason(r)}
+                      className={cn(
+                        "w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md text-left text-sm transition-colors",
+                        isChecked
+                          ? "bg-rose-50/80 dark:bg-rose-950/30 text-rose-900 dark:text-rose-100"
+                          : "hover:bg-[color:var(--muted)]/50"
+                      )}
+                      aria-pressed={isChecked}
+                    >
+                      <span
+                        className={cn(
+                          "size-4 rounded border grid place-items-center shrink-0 transition-all",
+                          isChecked
+                            ? "bg-rose-600 border-rose-600 text-white"
+                            : "border-[color:var(--border)] bg-[color:var(--background)]"
+                        )}
+                      >
+                        {isChecked && (
+                          <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 12 12"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M10 3L4.5 8.5L2 6"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        )}
+                      </span>
+                      <span className="leading-tight">{r}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+            <p className="text-[10px] text-[color:var(--muted-foreground)] leading-relaxed">
+              Marque todos que se aplicam — ajuda a IA a achar padrões depois.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -206,8 +267,8 @@ export function ChurnDialog({
           <button
             type="button"
             onClick={submit}
-            disabled={saving}
-            className="text-xs font-medium px-4 h-9 rounded-md bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+            disabled={saving || reasons.size === 0}
+            className="text-xs font-medium px-4 h-9 rounded-md bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
           >
             {saving ? "Salvando…" : "Confirmar saída"}
           </button>

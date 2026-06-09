@@ -43,6 +43,8 @@ export interface ChurnRow {
   task_id: string;
   churned_at: string; // ISO date
   reason: string;
+  /** Array Postgres text[] — multi-motivos. Fonte da verdade. */
+  reasons: string[] | null;
   reason_details: string | null;
   csm_at_time: string | null;
   monthly_revenue_at_time: number | null;

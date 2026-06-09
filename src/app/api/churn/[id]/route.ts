@@ -10,6 +10,9 @@ interface RouteContext {
 
 interface Body {
   churnedAt?: string;
+  /** Novo formato — array de motivos. */
+  reasons?: string[];
+  /** Compat com clientes antigos que ainda enviam reason single. */
   reason?: string;
   reasonDetails?: string;
 }
@@ -35,17 +38,33 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Validação
-  const reason = typeof body.reason === "string" ? body.reason.trim() : "";
-  if (!reason) {
+  // Validação dos motivos — aceita array OU single (compat)
+  let reasonsRaw: string[];
+  if (Array.isArray(body.reasons)) {
+    reasonsRaw = body.reasons;
+  } else if (typeof body.reason === "string") {
+    reasonsRaw = [body.reason];
+  } else {
+    reasonsRaw = [];
+  }
+  const reasons = reasonsRaw
+    .filter((r): r is string => typeof r === "string")
+    .map((r) => r.trim())
+    .filter((r) => r.length > 0);
+  if (reasons.length === 0) {
     return NextResponse.json(
-      { error: "Motivo é obrigatório" },
+      { error: "Pelo menos 1 motivo é obrigatório" },
       { status: 400 }
     );
   }
-  if (!(CHURN_REASONS as readonly string[]).includes(reason)) {
+  const invalid = reasons.filter(
+    (r) => !(CHURN_REASONS as readonly string[]).includes(r)
+  );
+  if (invalid.length > 0) {
     return NextResponse.json(
-      { error: `Motivo inválido. Opções: ${CHURN_REASONS.join(", ")}` },
+      {
+        error: `Motivo(s) inválido(s): ${invalid.join(", ")}. Opções: ${CHURN_REASONS.join(", ")}`,
+      },
       { status: 400 }
     );
   }
@@ -83,7 +102,7 @@ export async function POST(request: Request, context: RouteContext) {
     const event = await recordChurn({
       taskId: id,
       churnedAt,
-      reason,
+      reasons,
       reasonDetails,
       csmAtTime,
       monthlyRevenueAtTime,

@@ -98,6 +98,17 @@ create table if not exists churn_events (
   created_at timestamptz not null default now()
 );
 
+-- Multi-reasons: cliente pode sair por MAIS DE UM motivo simultaneamente
+-- (ex: resultado insuficiente + reclamação operacional). `reason` antigo
+-- continua existindo pra compat — mas `reasons` é a fonte da verdade.
+alter table churn_events
+  add column if not exists reasons text[] not null default '{}';
+
+-- Backfill: rows antigas com só `reason` viram array de 1 elemento
+update churn_events
+  set reasons = array[reason]
+  where reasons = '{}' and reason is not null;
+
 create index if not exists idx_churn_events_task on churn_events (task_id);
 create index if not exists idx_churn_events_date on churn_events (churned_at desc);
 
