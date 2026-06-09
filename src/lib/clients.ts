@@ -379,7 +379,12 @@ export async function getClients(): Promise<Client[]> {
 
   inflightGetClients = doGetClients()
     .then((data) => {
-      clientsCache = { data, expiresAt: Date.now() + CLIENTS_CACHE_TTL_MS };
+      // NUNCA cachear o fallback de mocks (quando ClickUp falha/timeout).
+      // Senão um único timeout envenena o cache por 30s e TODOS os
+      // /cliente/[id] retornam 404 (IDs reais não existem nos mocks).
+      if (data !== mockClients) {
+        clientsCache = { data, expiresAt: Date.now() + CLIENTS_CACHE_TTL_MS };
+      }
       return data;
     })
     .finally(() => {
