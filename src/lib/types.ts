@@ -1,5 +1,30 @@
 export type Status = "verde" | "amarelo" | "vermelho";
 
+export const CHURN_REASONS = [
+  "Resultado insuficiente / ROI baixo",
+  "Reclamação operacional (atendimento, prazo, qualidade)",
+  "Cortou orçamento",
+  "Mudou de estratégia interna",
+  "Fechou ou pausou empresa",
+  "Foi pra concorrente",
+  "Trouxe pra in-house",
+  "Outro",
+] as const;
+
+export type ChurnReason = (typeof CHURN_REASONS)[number];
+
+export interface ChurnEvent {
+  id: number;
+  taskId: string;
+  churnedAt: string; // ISO YYYY-MM-DD
+  reason: ChurnReason;
+  reasonDetails?: string;
+  csmAtTime?: string;
+  monthlyRevenueAtTime?: number;
+  nicheAtTime?: string;
+  createdAt: string; // ISO timestamptz
+}
+
 export type ClientSegment =
   | "Enterprise"
   | "Mid-Market"
@@ -76,6 +101,12 @@ export interface Client {
   // === Flags de integridade ===
   hasMasterRecord?: boolean; // true se existe no cadastro mestre
   hasOperationalFolder?: boolean; // true se tem folder operacional
+
+  // === Saída do cliente (churn) ===
+  /** True se há ao menos 1 churn_event registrado. Cliente está fora da base. */
+  isChurned?: boolean;
+  /** Última saída registrada (snapshot do momento). */
+  lastChurnEvent?: ChurnEvent;
 }
 
 export interface AIInsight {

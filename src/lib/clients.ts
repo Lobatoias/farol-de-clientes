@@ -38,6 +38,7 @@ const FINANCIALS_PATH = path.join(process.cwd(), "data", "financials.local.json"
 // === Supabase loader (production-ready) =============================
 
 import { getSupabase, type FinancialRow } from "./supabase";
+import { buildChurnIndex, loadAllChurnEvents } from "./churn";
 
 function rowToEntry(row: FinancialRow): FinancialEntry {
   return {
@@ -372,11 +373,14 @@ export async function getClients(): Promise<Client[]> {
 async function doGetClients(): Promise<Client[]> {
 
   try {
-    const [masterTasks, operationalFolders, financials] = await Promise.all([
-      listMasterClientTasks(),
-      listOperationalFolders(),
-      loadFinancials(),
-    ]);
+    const [masterTasks, operationalFolders, financials, churnEvents] =
+      await Promise.all([
+        listMasterClientTasks(),
+        listOperationalFolders(),
+        loadFinancials(),
+        loadAllChurnEvents(),
+      ]);
+    const churnIndex = buildChurnIndex(churnEvents);
 
     // Indexar folders por nome normalizado pra casamento
     const foldersByName = new Map<string, CKFolder>();
@@ -415,6 +419,15 @@ async function doGetClients(): Promise<Client[]> {
       if (matchedFolderIds.has(folder.id)) continue;
       if (/processos|padr[oõ]es|cbs imports|^vela latina$/i.test(folder.name)) continue;
       clients.push(buildClientFromFolderOnly(folder, null));
+    }
+
+    // Decora cada cliente com info de churn (se houver)
+    for (const c of clients) {
+      const ev = churnIndex.get(c.id);
+      if (ev) {
+        c.isChurned = true;
+        c.lastChurnEvent = ev;
+      }
     }
 
     // Ordenar: críticos primeiro, depois por nome
@@ -462,6 +475,18 @@ export async function getClientById(id: string): Promise<Client | undefined> {
 
 export function isUsingMockData(): boolean {
   return !CLICKUP_CONFIGURED;
+}
+
+/** Só clientes ATIVOS (que não saíram). Use no dashboard, métricas, etc. */
+export async function getActiveClients(): Promise<Client[]> {
+  const all = await getClients();
+  return all.filter((c) => !c.isChurned);
+}
+
+/** Só clientes que SAÍRAM. Use no /saidas e nas análises de churn. */
+export async function getChurnedClients(): Promise<Client[]> {
+  const all = await getClients();
+  return all.filter((c) => c.isChurned);
 }
 
 /** Invalida a cache em memória — chamar após mutações (ex: mudar Farol). */

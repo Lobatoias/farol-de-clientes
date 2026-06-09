@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Lightbulb, LayoutDashboard, Compass, DollarSign, LogOut } from "lucide-react";
+import { Lightbulb, LayoutDashboard, Compass, DollarSign, UserMinus, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/estrategico", label: "Estratégico", icon: Compass },
   { href: "/financeiro", label: "Financeiro", icon: DollarSign },
+  { href: "/saidas", label: "Saídas", icon: UserMinus },
 ];
 
 export function TopNav() {

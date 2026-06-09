@@ -75,9 +75,30 @@ create trigger trg_checklist_progress_updated_at
 alter table checklist_progress disable row level security;
 
 -- ============================================================
--- Pronto. Próximo passo: pegue as credenciais em
--- Settings → API → Project URL + anon key public,
--- e cole no .env.local (ou nas env vars da Vercel):
---   SUPABASE_URL=https://xxxxx.supabase.co
---   SUPABASE_KEY=eyJhbGciOi...   (anon key)
+-- Tabela: churn_events
+-- Registra cada saída de cliente. Um cliente pode ter VÁRIOS
+-- eventos (se voltou e saiu de novo, raro). Pra saber se está
+-- atualmente fora: existir ao menos um evento.
+-- Pra desfazer marcação acidental: deletar o evento mais recente.
+--
+-- monthly_revenue_at_time / csm_at_time / niche_at_time são
+-- snapshots no momento da saída — não mudam se o cliente for
+-- editado depois. Crítico pra relatórios históricos.
 -- ============================================================
+
+create table if not exists churn_events (
+  id bigserial primary key,
+  task_id text not null,
+  churned_at date not null,
+  reason text not null,
+  reason_details text,
+  csm_at_time text,
+  monthly_revenue_at_time numeric,
+  niche_at_time text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_churn_events_task on churn_events (task_id);
+create index if not exists idx_churn_events_date on churn_events (churned_at desc);
+
+alter table churn_events disable row level security;

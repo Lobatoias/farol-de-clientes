@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { UserMinus } from "lucide-react";
 import { getClients, isUsingMockData } from "@/lib/clients";
 import { DashboardClient } from "@/components/dashboard-client";
 import { KpiCards } from "@/components/kpi-cards";
@@ -9,7 +11,9 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function DashboardPage() {
-  const clients = await getClients();
+  const allClients = await getClients();
+  const churnedCount = allClients.filter((c) => c.isChurned).length;
+  const activeClients = allClients.filter((c) => !c.isChurned);
   const usingMock = isUsingMockData();
 
   return (
@@ -20,14 +24,28 @@ export default async function DashboardPage() {
           <p className="text-sm text-[color:var(--muted-foreground)] mt-1">
             Estado de saúde de todos os clientes. Críticos no topo. Clique em um card para detalhes.
           </p>
+          {churnedCount > 0 && (
+            <Link
+              href="/saidas"
+              className="inline-flex items-center gap-1.5 mt-2 text-xs text-[color:var(--muted-foreground)] hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+            >
+              <UserMinus className="size-3" />
+              {churnedCount}{" "}
+              {churnedCount === 1 ? "cliente saiu" : "clientes saíram"} — ver
+              histórico
+            </Link>
+          )}
         </div>
-        <SourceBanner source={usingMock ? "mock" : "clickup"} count={clients.length} />
+        <SourceBanner
+          source={usingMock ? "mock" : "clickup"}
+          count={activeClients.length}
+        />
       </div>
 
-      <KpiCards clients={clients} />
+      <KpiCards clients={activeClients} />
 
       <div className="border-t border-[color:var(--border)] pt-6">
-        <DashboardClient clients={clients} />
+        <DashboardClient clients={activeClients} />
       </div>
     </div>
   );

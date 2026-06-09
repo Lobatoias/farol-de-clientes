@@ -35,3 +35,17 @@ export interface FinancialRow {
   created_at?: string;
   updated_at?: string;
 }
+
+// === Tipos da tabela `churn_events` =================================
+
+export interface ChurnRow {
+  id: number;
+  task_id: string;
+  churned_at: string; // ISO date
+  reason: string;
+  reason_details: string | null;
+  csm_at_time: string | null;
+  monthly_revenue_at_time: number | null;
+  niche_at_time: string | null;
+  created_at: string;
+}

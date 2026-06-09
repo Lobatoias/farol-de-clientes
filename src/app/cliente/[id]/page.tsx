@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { AIPanel } from "@/components/ai-panel";
 import { Timeline } from "@/components/timeline";
 import { MeetingNotes } from "@/components/meeting-notes";
+import { ClientChurnSection } from "@/components/client-churn-section";
 import { cn, formatBRL, formatDate, formatRelative, statusConfig } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -60,7 +61,7 @@ export default async function ClientDetailPage({
             <p className="text-sm mt-2 max-w-2xl leading-relaxed">{client.summary}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {client.clickupUrl && (
             <a
               href={client.clickupUrl}
@@ -72,8 +73,25 @@ export default async function ClientDetailPage({
               <ExternalLink className="size-3.5" />
             </a>
           )}
+          {!client.isChurned && (
+            <ClientChurnSection
+              clientId={client.id}
+              clientName={client.name}
+              isChurned={false}
+            />
+          )}
         </div>
       </div>
+
+      {/* Banner de churn (se já saiu) */}
+      {client.isChurned && client.lastChurnEvent && (
+        <ClientChurnSection
+          clientId={client.id}
+          clientName={client.name}
+          isChurned={true}
+          lastChurnEvent={client.lastChurnEvent}
+        />
+      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3 animate-fade-up stagger-1">

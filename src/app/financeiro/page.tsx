@@ -1,15 +1,33 @@
 import { DollarSign, Lock } from "lucide-react";
 import { getClients, isUsingMockData } from "@/lib/clients";
+import { loadAllChurnEvents } from "@/lib/churn";
+import { buildChurnBuckets, groupByReason } from "@/lib/churn-analytics";
 import { FinanceiroEditor } from "@/components/financeiro-editor";
 import { SourceBanner } from "@/components/source-banner";
 import { NichoBreakdown } from "@/components/nicho-breakdown";
 import { LTVSection } from "@/components/ltv-section";
+import { ChurnSummary } from "@/components/churn-summary";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function FinanceiroPage() {
-  const clients = await getClients();
+  const [allClients, churnEvents] = await Promise.all([
+    getClients(),
+    loadAllChurnEvents(),
+  ]);
+  // Métricas (LTV, NichoBreakdown, editor) excluem clientes que já saíram
+  const clients = allClients.filter((c) => !c.isChurned);
+
+  // Saídas: agrega por buckets + motivos dos últimos 12 meses
+  const buckets = buildChurnBuckets(churnEvents);
+  const last12 = buckets.find((b) => b.label === "Últimos 12 meses");
+  const eventsLast12mo = last12
+    ? churnEvents.filter(
+        (e) => e.churnedAt >= last12.from && e.churnedAt <= last12.to
+      )
+    : [];
+  const byReasonLast12mo = groupByReason(eventsLast12mo);
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
@@ -39,6 +57,12 @@ export default async function FinanceiroPage() {
       </div>
 
       <LTVSection clients={clients} />
+
+      <ChurnSummary
+        buckets={buckets}
+        byReasonLast12mo={byReasonLast12mo}
+        totalEvents={churnEvents.length}
+      />
 
       <NichoBreakdown clients={clients} />
 
