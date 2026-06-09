@@ -122,7 +122,7 @@ export function ChurnBreakdown({ events }: ChurnBreakdownProps) {
           <p className="text-sm text-[color:var(--muted-foreground)]">
             {showByCount
               ? `${totalCount} ${totalCount === 1 ? "saída" : "saídas"} agrupadas — quem está perdendo mais`
-              : `R$ ${formatBRL(totalMrrLost).replace("R$ ", "")} de mensalidade perdida agregada`}
+              : `${formatBRL(totalMrrLost)} de mensalidade perdida agregada`}
           </p>
         </div>
         <div className="flex flex-col items-end gap-2">
