@@ -2,9 +2,10 @@ import Link from "next/link";
 import { UserMinus, ArrowLeft, TrendingDown } from "lucide-react";
 import { getClients } from "@/lib/clients";
 import { loadAllChurnEvents } from "@/lib/churn";
-import { buildChurnBuckets, groupByReason } from "@/lib/churn-analytics";
+import { buildChurnBuckets } from "@/lib/churn-analytics";
 import { ChurnHistoryClient } from "@/components/churn-history-client";
 import { ChurnAIInsights } from "@/components/churn-ai-insights";
+import { ChurnBreakdown } from "@/components/churn-breakdown";
 import { formatBRL, formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,6 @@ export default async function SaidasPage() {
         (e) => e.churnedAt >= last12.from && e.churnedAt <= last12.to
       )
     : [];
-  const byReason = groupByReason(eventsLast12mo);
 
   const totalLost = churnEvents.reduce(
     (s, e) => s + (e.monthlyRevenueAtTime ?? 0),
@@ -90,37 +90,8 @@ export default async function SaidasPage() {
         />
       </div>
 
-      {/* Mini comparativo por motivo */}
-      {byReason.length > 0 && (
-        <section className="space-y-3 animate-fade-up stagger-2">
-          <h2 className="text-base font-semibold">
-            Motivos · últimos 12 meses
-          </h2>
-          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card-elevated)] p-5">
-            <ul className="space-y-2">
-              {byReason.map((r) => (
-                <li key={r.reason} className="space-y-1">
-                  <div className="flex items-center justify-between gap-2 text-sm">
-                    <span className="truncate">{r.reason}</span>
-                    <span className="text-xs tabular-nums text-[color:var(--muted-foreground)]">
-                      {r.count} · {Math.round(r.pct * 100)}% ·{" "}
-                      {r.monthlyRevenueLost > 0
-                        ? formatBRL(r.monthlyRevenueLost)
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-[color:var(--muted)] overflow-hidden">
-                    <div
-                      className="h-full bg-rose-500/80 transition-all duration-500"
-                      style={{ width: `${r.pct * 100}%` }}
-                    />
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-      )}
+      {/* Distribuição de perdas — donut com 3 dimensões togláveis */}
+      <ChurnBreakdown events={churnEvents} />
 
       {/* Análise de padrões com IA */}
       <ChurnAIInsights hasEvents={enrichedEvents.length > 0} />
