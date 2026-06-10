@@ -146,8 +146,8 @@ export async function listTasksInList(listId: string): Promise<CKTask[]> {
 }
 
 // Cache 30s por folder pra evitar refetch da timeline em toda navegação.
-// Vercel free tier: cada instância tem seu cache; sem invalidação manual
-// porque timeline = dados read-only do ClickUp (não mutamos via app).
+// Vercel free tier: cada instância tem seu cache. Mutações de status de
+// task (concluir/reabrir pelo app) chamam invalidateTimelineCache().
 const timelineCache = new Map<
   string,
   { data: CKTask[]; expiresAt: number }
@@ -184,6 +184,47 @@ export async function listTasksInFolder(folderId: string): Promise<CKTask[]> {
 
   inflightTimeline.set(folderId, promise);
   return promise;
+}
+
+/** Limpa o cache de timelines — chamar após mutar status de task. */
+export function invalidateTimelineCache(): void {
+  timelineCache.clear();
+  inflightTimeline.clear();
+}
+
+// === Status de tasks (concluir/reabrir pelo app) ====================
+
+export interface CKListStatus {
+  status: string;
+  type: "open" | "custom" | "done" | "closed";
+  orderindex: number;
+}
+
+/** Versão enxuta de GET /task — só o que precisamos pra mutar status. */
+export async function getTaskLite(
+  taskId: string
+): Promise<{ id: string; listId: string; status: string }> {
+  const t = await ck<{
+    id: string;
+    status?: { status: string };
+    list?: { id: string };
+  }>(`/task/${taskId}`);
+  return { id: t.id, listId: t.list?.id ?? "", status: t.status?.status ?? "" };
+}
+
+export async function getListStatuses(listId: string): Promise<CKListStatus[]> {
+  const l = await ck<{ statuses?: CKListStatus[] }>(`/list/${listId}`);
+  return (l.statuses ?? []).sort((a, b) => a.orderindex - b.orderindex);
+}
+
+export async function updateTaskStatus(
+  taskId: string,
+  status: string
+): Promise<void> {
+  await ck(`/task/${taskId}`, {
+    method: "PUT",
+    body: JSON.stringify({ status }),
+  });
 }
 
 // === Custom field extraction =======================================

@@ -243,7 +243,9 @@ function buildEventsFromFolderTasks(tasks: CKTask[]): ClientEvent[] {
       };
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 20);
+    // 60 (era 20): com as abas Abertas/Concluídas a lista não abarrota,
+    // e o histórico de concluídas precisa de profundidade pra ser útil.
+    .slice(0, 60);
 }
 
 function buildClientFromMasterTask(

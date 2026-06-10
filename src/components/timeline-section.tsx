@@ -14,7 +14,7 @@ interface TimelineSectionProps {
 export async function TimelineSection({ clientId }: TimelineSectionProps) {
   const data = await getClientTimeline(clientId);
   const events = data?.events ?? [];
-  return <Timeline events={events} />;
+  return <Timeline events={events} clientId={clientId} />;
 }
 
 /**
