@@ -112,7 +112,9 @@ export interface ClientEvent {
   title: string;
   description?: string; // texto completo da descrição da task
   author?: string;
-  status?: string; // status do ClickUp ("backlog", "complete", "a fazer", etc.)
+  status?: string; // status do ClickUp ("backlog", "concluído", "a fazer", etc.)
+  /** Type do status no ClickUp: "open" | "custom" | "done" | "closed" */
+  statusType?: string;
   url?: string; // link direto pra abrir no ClickUp
   commentCount?: number;
 }

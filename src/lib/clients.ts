@@ -14,6 +14,7 @@ import {
   listMasterClientTasks,
   listOperationalFolders,
   listTasksInFolder,
+  isTaskDone,
   type CKFolder,
   type CKTask,
 } from "./clickup";
@@ -239,6 +240,7 @@ function buildEventsFromFolderTasks(tasks: CKTask[]): ClientEvent[] {
         description,
         author,
         status: t.status?.status,
+        statusType: t.status?.type,
         url: t.url,
       };
     })
@@ -279,7 +281,7 @@ function buildClientFromMasterTask(
   const events = operationalTasks ? buildEventsFromFolderTasks(operationalTasks) : [];
   const openTickets = operationalTasks
     ? operationalTasks.filter(
-        (t) => t.status?.status && !["complete", "closed", "done"].includes(t.status.status.toLowerCase())
+        (t) => t.status?.status && !isTaskDone(t)
       ).length
     : 0;
 
@@ -344,7 +346,7 @@ function buildClientFromFolderOnly(folder: CKFolder, operationalTasks: CKTask[] 
     margin: 0,
     openTickets: operationalTasks
       ? operationalTasks.filter(
-          (t) => t.status?.status && !["complete", "closed", "done"].includes(t.status.status.toLowerCase())
+          (t) => t.status?.status && !isTaskDone(t)
         ).length
       : 0,
     riskTags: [],
@@ -518,7 +520,7 @@ async function enrichClientWithTimeline(client: Client): Promise<Client> {
       ...client,
       events: buildEventsFromFolderTasks(operationalTasks),
       openTickets: operationalTasks.filter(
-        (t) => t.status?.status && !["complete", "closed", "done"].includes(t.status.status.toLowerCase())
+        (t) => t.status?.status && !isTaskDone(t)
       ).length,
     };
   } catch (err) {
@@ -566,11 +568,7 @@ export async function getClientTimeline(
     return {
       events: buildEventsFromFolderTasks(operationalTasks),
       openTickets: operationalTasks.filter(
-        (t) =>
-          t.status?.status &&
-          !["complete", "closed", "done"].includes(
-            t.status.status.toLowerCase()
-          )
+        (t) => t.status?.status && !isTaskDone(t)
       ).length,
     };
   } catch (err) {

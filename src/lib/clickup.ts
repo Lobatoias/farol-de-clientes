@@ -105,7 +105,7 @@ export interface CKTask {
   id: string;
   name: string;
   description?: string;
-  status?: { status: string; color?: string };
+  status?: { status: string; color?: string; type?: string };
   assignees?: CKAssignee[];
   tags?: Array<{ name: string }>;
   due_date?: string | null;
@@ -114,6 +114,18 @@ export interface CKTask {
   url: string;
   list?: { id: string; name: string };
   custom_fields?: CKCustomFieldValue[];
+}
+
+/**
+ * Task está concluída? Usa o TYPE do status ("done"/"closed") quando o
+ * ClickUp manda — funciona com status nomeados em qualquer idioma
+ * ("concluído", "feito"...). Fallback por nome pra payloads antigos.
+ */
+export function isTaskDone(t: CKTask): boolean {
+  const type = t.status?.type;
+  if (type) return type === "done" || type === "closed";
+  const name = t.status?.status?.toLowerCase() ?? "";
+  return ["complete", "closed", "done", "concluído", "concluido"].includes(name);
 }
 
 // === Endpoints ======================================================

@@ -63,13 +63,25 @@ const STATUS_COLOR: Record<string, string> = {
   done: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300",
   complete: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300",
   closed: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300",
+  "concluído": "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300",
+  concluido: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300",
 };
 
-/** Mesma régua usada no resto do app (openTickets etc.) */
-const DONE_STATUSES = new Set(["complete", "closed", "done"]);
+/**
+ * Concluída? Decide pelo TYPE do status do ClickUp (funciona com nomes
+ * em qualquer idioma, ex. "concluído"). Fallback por nome.
+ */
+const DONE_STATUSES = new Set([
+  "complete",
+  "closed",
+  "done",
+  "concluído",
+  "concluido",
+]);
 
-function isDone(status?: string): boolean {
-  return !!status && DONE_STATUSES.has(status.toLowerCase());
+function isDone(ev: { status?: string; statusType?: string }): boolean {
+  if (ev.statusType) return ev.statusType === "done" || ev.statusType === "closed";
+  return !!ev.status && DONE_STATUSES.has(ev.status.toLowerCase());
 }
 
 type Tab = "abertas" | "concluidas" | "todas";
@@ -78,20 +90,22 @@ export function Timeline({ events, clientId }: TimelineProps) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("abertas");
   // Overrides otimistas: id da task → status novo (até o refresh chegar)
-  const [overrides, setOverrides] = useState<Record<string, string>>({});
+  const [overrides, setOverrides] = useState<
+    Record<string, { status: string; statusType: string }>
+  >({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const effective = useMemo(
     () =>
       events.map((ev) =>
-        overrides[ev.id] ? { ...ev, status: overrides[ev.id] } : ev
+        overrides[ev.id] ? { ...ev, ...overrides[ev.id] } : ev
       ),
     [events, overrides]
   );
 
-  const open = effective.filter((ev) => !isDone(ev.status));
-  const done = effective.filter((ev) => isDone(ev.status));
+  const open = effective.filter((ev) => !isDone(ev));
+  const done = effective.filter((ev) => isDone(ev));
   const shown =
     tab === "abertas" ? open : tab === "concluidas" ? done : effective;
 
@@ -99,11 +113,12 @@ export function Timeline({ events, clientId }: TimelineProps) {
     if (savingId) return;
     setSavingId(ev.id);
     setError(null);
-    // Otimista: muda de aba na hora; status real vem no refresh
-    setOverrides((o) => ({
-      ...o,
-      [ev.id]: action === "complete" ? "complete" : "a fazer",
-    }));
+    // Otimista: muda de aba na hora; nome real do status vem na resposta
+    const optimistic =
+      action === "complete"
+        ? { status: "concluído", statusType: "done" }
+        : { status: "a fazer", statusType: "open" };
+    setOverrides((o) => ({ ...o, [ev.id]: optimistic }));
     try {
       const res = await fetch(`/api/tasks/${ev.id}/status`, {
         method: "POST",
@@ -113,7 +128,10 @@ export function Timeline({ events, clientId }: TimelineProps) {
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body?.error || `HTTP ${res.status}`);
       if (body.status) {
-        setOverrides((o) => ({ ...o, [ev.id]: body.status }));
+        setOverrides((o) => ({
+          ...o,
+          [ev.id]: { status: body.status, statusType: optimistic.statusType },
+        }));
       }
       router.refresh();
     } catch (err) {
@@ -229,7 +247,7 @@ function TimelineItem({
     !!event.description?.trim() || (event.commentCount && event.commentCount > 0);
   const statusKey = event.status?.toLowerCase() ?? "";
   const statusClass = STATUS_COLOR[statusKey] ?? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300";
-  const done = isDone(event.status);
+  const done = isDone(event);
 
   return (
     <li className="relative pl-10">
