@@ -202,13 +202,14 @@ export default async function ClientDetailPage({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* AI panel */}
-        <div className="lg:col-span-3 animate-fade-up stagger-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+        {/* Esquerda: análise da IA + notas internas (a largura cai bem pra anotar) */}
+        <div className="lg:col-span-3 space-y-4 animate-fade-up stagger-4">
           <AIPanel client={client} analysis={analysis} />
+          <InternalNotes clientId={client.id} initialNotes={internalNotes} />
         </div>
 
-        {/* Side */}
+        {/* Direita: histórico de saúde + reuniões */}
         <div className="lg:col-span-2 space-y-4 animate-fade-up stagger-5">
           <FarolHistory
             clientId={client.id}
@@ -222,8 +223,6 @@ export default async function ClientDetailPage({
             lastMeetingAt={client.lastMeetingAt}
             nextMeetingAt={client.nextMeetingAt}
           />
-
-          <InternalNotes clientId={client.id} initialNotes={internalNotes} />
         </div>
       </div>
 
