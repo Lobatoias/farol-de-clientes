@@ -119,6 +119,41 @@ export interface ClientEvent {
   commentCount?: number;
 }
 
+export type CreativeFormat = "video" | "image" | "carousel";
+
+export interface CreativeRef {
+  id: number;
+  niche: string;
+  source: "manual" | "meta";
+  advertiser?: string;
+  format?: CreativeFormat;
+  thumbnailUrl?: string;
+  originalUrl?: string;
+  caption?: string;
+  /** Início de veiculação (ISO date) — base do sinal "dias no ar". */
+  firstSeenAt?: string;
+  /** Dias no ar (calculado a partir de firstSeenAt). */
+  daysRunning?: number;
+  /** Nº de anúncios usando o criativo (sinal de escala). */
+  variantCount: number;
+  /** Análise da IA (Fase 3) — null até analisar. */
+  aiAnalysis?: CreativeAnalysis;
+  tags: string[];
+  starred: boolean;
+  collectedAt: string;
+}
+
+export interface CreativeAnalysis {
+  nota: number;
+  funil: "topo" | "meio" | "fundo";
+  gancho: string;
+  corpo: string;
+  prova: string;
+  cta: string;
+  oQueRoubar: string;
+  comoAdaptar: string;
+}
+
 export interface ClientNote {
   id: number;
   taskId: string;

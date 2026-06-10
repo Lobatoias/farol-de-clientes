@@ -213,3 +213,33 @@ create table if not exists metric_snapshots (
   updated_at timestamptz not null default now()
 );
 alter table metric_snapshots disable row level security;
+
+-- === Biblioteca de criativos (swipe file por nicho) ==================
+-- Referências de criativos do nicho (Meta Ad Library ou cadastro manual).
+-- Ordenada pelos "sinais de ouro": dias no ar + nº de variantes.
+-- Ver docs/biblioteca-criativos.md. MVP: thumbnail_url externo (manual);
+-- o coletor depois sobe thumbnail pro Storage e grava a URL pública aqui.
+create table if not exists creative_refs (
+  id            bigserial primary key,
+  niche         text not null,
+  source        text not null default 'manual',   -- 'manual' | 'meta'
+  platform      text default 'meta',
+  library_id    text,                              -- null pra cadastro manual
+  advertiser    text,
+  format        text,                              -- 'video' | 'image' | 'carousel'
+  thumbnail_url text,
+  original_url  text,
+  caption       text,
+  landing_url   text,
+  first_seen_at date,                              -- início de veiculação (sinal)
+  variant_count int default 1,                     -- nº de anúncios usando o criativo (sinal)
+  ai_analysis   jsonb,                             -- preenchido na Fase 3
+  tags          text[] default '{}',
+  starred       boolean default false,
+  collected_at  timestamptz not null default now()
+);
+create index if not exists idx_creative_refs_niche on creative_refs (niche, collected_at desc);
+-- dedupe só pra coletas (library_id não-nulo); manual pode repetir
+create unique index if not exists uq_creative_refs_library
+  on creative_refs (library_id) where library_id is not null;
+alter table creative_refs disable row level security;

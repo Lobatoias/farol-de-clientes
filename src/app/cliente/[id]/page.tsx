@@ -27,6 +27,8 @@ import { InternalNotes } from "@/components/internal-notes";
 import { FarolHistory } from "@/components/farol-history";
 import { listClientNotes } from "@/lib/client-notes";
 import { loadFarolHistory } from "@/lib/farol-history";
+import { listCreativesByNiche } from "@/lib/creatives";
+import { CreativesSection } from "@/components/creatives-section";
 import { ClientChurnSection } from "@/components/client-churn-section";
 import { ClientContentsSection } from "@/components/client-contents-section";
 import { listContentsByClient } from "@/lib/contents";
@@ -59,6 +61,11 @@ export default async function ClientDetailPage({
     loadFarolHistory(id),
   ]);
   if (!client) notFound();
+
+  // Biblioteca de criativos é por nicho (compartilhada entre clientes do nicho)
+  const creatives = client.niche
+    ? await listCreativesByNiche(client.niche)
+    : [];
 
   const analysis = getClientAnalysis(client);
   const cfg = statusConfig[client.status];
@@ -231,6 +238,13 @@ export default async function ClientDetailPage({
         clientId={client.id}
         clientName={client.name}
         contents={contents}
+      />
+
+      {/* Biblioteca de criativos do nicho (swipe file) */}
+      <CreativesSection
+        clientName={client.name}
+        niche={client.niche}
+        initialCreatives={creatives}
       />
 
       {/* Timeline — streaming via Suspense pra a página renderizar logo */}

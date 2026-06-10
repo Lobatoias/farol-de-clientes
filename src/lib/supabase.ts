@@ -58,6 +58,26 @@ export interface ContentRow {
   updated_at: string;
 }
 
+export interface CreativeRefRow {
+  id: number;
+  niche: string;
+  source: string; // 'manual' | 'meta'
+  platform: string | null;
+  library_id: string | null;
+  advertiser: string | null;
+  format: string | null; // 'video' | 'image' | 'carousel'
+  thumbnail_url: string | null;
+  original_url: string | null;
+  caption: string | null;
+  landing_url: string | null;
+  first_seen_at: string | null; // ISO date
+  variant_count: number;
+  ai_analysis: unknown | null;
+  tags: string[] | null;
+  starred: boolean;
+  collected_at: string;
+}
+
 export interface ClientNoteRow {
   id: number;
   task_id: string;
