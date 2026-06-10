@@ -1,6 +1,7 @@
 import { FileText, ExternalLink, CalendarClock } from "lucide-react";
 import Link from "next/link";
 import { formatRelative } from "@/lib/utils";
+import { MeetingNotesContent } from "@/components/meeting-notes-content";
 
 interface MeetingNotesProps {
   notes?: string;
@@ -46,9 +47,7 @@ export function MeetingNotes({ notes, lastMeetingAt, clickupMasterUrl }: Meeting
       </div>
       <div className="p-5">
         {hasNotes ? (
-          <div className="text-sm whitespace-pre-wrap leading-relaxed text-[color:var(--foreground)]">
-            {notes}
-          </div>
+          <MeetingNotesContent notes={notes!} />
         ) : (
           <div className="text-sm text-[color:var(--muted-foreground)] space-y-2">
             <p>Nenhuma nota registrada.</p>
