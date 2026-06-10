@@ -51,16 +51,21 @@ export async function POST(request: Request, context: RouteContext) {
     }
     const statuses = await getListStatuses(task.listId);
 
+    // statuses vem ordenado por orderindex asc (getListStatuses). Em listas
+    // com statuses 100% customizados (sem type "done"/"open"), caímos pro
+    // extremo certo: concluir → última coluna; reabrir → primeira coluna.
     const target =
       action === "complete"
         ? statuses.find((s) => s.type === "done") ??
-          statuses.find((s) => s.type === "closed")
+          statuses.find((s) => s.type === "closed") ??
+          statuses.at(-1)
         : statuses.find((s) => s.type === "open") ??
-          statuses.find((s) => s.type === "custom");
+          statuses.find((s) => s.type === "custom") ??
+          statuses[0];
 
     if (!target) {
       return NextResponse.json(
-        { error: "Lista sem status compatível no ClickUp" },
+        { error: "Lista sem nenhum status no ClickUp" },
         { status: 422 }
       );
     }

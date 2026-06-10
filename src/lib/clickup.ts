@@ -151,10 +151,17 @@ export async function getFolder(folderId: string): Promise<CKFolder> {
 }
 
 export async function listTasksInList(listId: string): Promise<CKTask[]> {
-  const data = await ck<{ tasks: CKTask[] }>(
-    `/list/${listId}/task?include_closed=true&subtasks=true`
-  );
-  return data.tasks;
+  // ClickUp pagina em 100 tasks/página. Sem isto, listas com +100 tasks
+  // truncavam o histórico silenciosamente. Backstop de 20 páginas (2000).
+  const all: CKTask[] = [];
+  for (let page = 0; page < 20; page++) {
+    const data = await ck<{ tasks: CKTask[]; last_page?: boolean }>(
+      `/list/${listId}/task?include_closed=true&subtasks=true&page=${page}`
+    );
+    all.push(...data.tasks);
+    if (data.last_page || data.tasks.length < 100) break;
+  }
+  return all;
 }
 
 // Cache 30s por folder pra evitar refetch da timeline em toda navegação.

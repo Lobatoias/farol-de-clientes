@@ -52,10 +52,16 @@ export async function loadClientsSnapshot(): Promise<Client[] | null> {
 export async function saveClientsSnapshot(clients: Client[]): Promise<void> {
   const sb = getSupabase();
   if (!sb || clients.length === 0) return;
+  // Stripa meetingNotes (pode ser 10-15KB/cliente de dump de WhatsApp).
+  // O dashboard/snapshot não usa as notas — só a página de detalhe, que
+  // lê do ClickUp direto. Encolhe o JSONB e a leitura/escrita do snapshot.
+  const lite = clients.map((c) =>
+    c.meetingNotes ? { ...c, meetingNotes: undefined } : c
+  );
   try {
     const { error } = await sb.from("clients_snapshot").upsert({
       id: ROW_ID,
-      payload: clients,
+      payload: lite,
       updated_at: new Date().toISOString(),
     });
     if (error) console.error("[Snapshot] save falhou:", error.message);

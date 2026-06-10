@@ -38,12 +38,17 @@ function rowToEvent(row: ChurnRow): ChurnEvent {
 }
 
 /**
- * Carrega TODOS os eventos de saída do Supabase, ordenados do mais recente
- * pro mais antigo. Volume baixo (~dezenas de linhas) então não vale paginar.
+ * Versão que sinaliza falha: `ok=false` quando o Supabase deu erro
+ * (distinto de "sem eventos"). Crítico pra não persistir um estado em que
+ * clientes que saíram aparecem como ativos só porque o churn não carregou.
+ * `ok=true` quando não há Supabase (dev) — aí o vazio é legítimo.
  */
-export async function loadAllChurnEvents(): Promise<ChurnEvent[]> {
+export async function loadAllChurnEventsSafe(): Promise<{
+  events: ChurnEvent[];
+  ok: boolean;
+}> {
   const sb = getSupabase();
-  if (!sb) return [];
+  if (!sb) return { events: [], ok: true };
   const { data, error } = await sb
     .from("churn_events")
     .select("*")
@@ -51,9 +56,19 @@ export async function loadAllChurnEvents(): Promise<ChurnEvent[]> {
     .order("created_at", { ascending: false });
   if (error) {
     console.error("[Churn] load error:", error);
-    return [];
+    return { events: [], ok: false };
   }
-  return ((data ?? []) as ChurnRow[]).map(rowToEvent);
+  return { events: ((data ?? []) as ChurnRow[]).map(rowToEvent), ok: true };
+}
+
+/**
+ * Carrega TODOS os eventos de saída do Supabase, ordenados do mais recente
+ * pro mais antigo. Volume baixo (~dezenas de linhas) então não vale paginar.
+ * Falha → [] (use loadAllChurnEventsSafe onde a distinção importa).
+ */
+export async function loadAllChurnEvents(): Promise<ChurnEvent[]> {
+  const { events } = await loadAllChurnEventsSafe();
+  return events;
 }
 
 /**

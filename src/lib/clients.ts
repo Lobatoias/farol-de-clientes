@@ -44,7 +44,7 @@ import {
   saveClientsSnapshot,
   deleteClientsSnapshot,
 } from "./clients-snapshot";
-import { buildChurnIndex, loadAllChurnEvents } from "./churn";
+import { buildChurnIndex, loadAllChurnEventsSafe } from "./churn";
 
 function rowToEntry(row: FinancialRow): FinancialEntry {
   return {
@@ -366,6 +366,12 @@ let clientsCache: { data: Client[]; expiresAt: number } | null = null;
  * (acabou de ficar velho; o delete dele é assíncrono).
  */
 let snapshotBypassUntil = 0;
+/**
+ * O último doGetClients() carregou o churn com sucesso? Se NÃO (Supabase
+ * piscou), não cacheamos/snapshotamos: clientes que saíram apareceriam como
+ * ativos e isso ficaria preso por 30s, inflando MRR/LTV e subavaliando churn.
+ */
+let lastChurnLoadOk = true;
 
 /**
  * TTL curto pra balancear velocidade vs consistência multi-instância.
@@ -396,7 +402,10 @@ export async function getClients(): Promise<Client[]> {
       // NUNCA cachear o fallback de mocks (quando ClickUp falha/timeout).
       // Senão um único timeout envenena o cache por 30s e TODOS os
       // /cliente/[id] retornam 404 (IDs reais não existem nos mocks).
-      if (data !== mockClients) {
+      // Não persistir mocks (timeout do ClickUp) nem um estado com churn
+      // incompleto (Supabase piscou) — serve nesta request, mas a próxima
+      // refaz, evitando dado errado preso por 30s.
+      if (data !== mockClients && lastChurnLoadOk) {
         clientsCache = { data, expiresAt: Date.now() + CLIENTS_CACHE_TTL_MS };
         // Mantém o snapshot compartilhado fresco pras outras instâncias
         void saveClientsSnapshot(data);
@@ -436,14 +445,17 @@ export async function getClients(): Promise<Client[]> {
 async function doGetClients(): Promise<Client[]> {
 
   try {
-    const [masterTasks, operationalFolders, financials, churnEvents] =
+    const [masterTasks, operationalFolders, financials, churnResult] =
       await Promise.all([
         listMasterClientTasks(),
         listOperationalFolders(),
         loadFinancials(),
-        loadAllChurnEvents(),
+        loadAllChurnEventsSafe(),
       ]);
-    const churnIndex = buildChurnIndex(churnEvents);
+    // Se o churn falhou, marca pro getClients() NÃO cachear/snapshotar
+    // este resultado (senão clientes que saíram ficariam presos como ativos).
+    lastChurnLoadOk = churnResult.ok;
+    const churnIndex = buildChurnIndex(churnResult.events);
 
     // Indexar folders por nome normalizado pra casamento
     const foldersByName = new Map<string, CKFolder>();
