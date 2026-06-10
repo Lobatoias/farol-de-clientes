@@ -45,6 +45,7 @@ import {
   deleteClientsSnapshot,
 } from "./clients-snapshot";
 import { buildChurnIndex, loadAllChurnEventsSafe } from "./churn";
+import { loadNoteCounts } from "./client-notes";
 
 function rowToEntry(row: FinancialRow): FinancialEntry {
   return {
@@ -445,12 +446,13 @@ export async function getClients(): Promise<Client[]> {
 async function doGetClients(): Promise<Client[]> {
 
   try {
-    const [masterTasks, operationalFolders, financials, churnResult] =
+    const [masterTasks, operationalFolders, financials, churnResult, noteCounts] =
       await Promise.all([
         listMasterClientTasks(),
         listOperationalFolders(),
         loadFinancials(),
         loadAllChurnEventsSafe(),
+        loadNoteCounts(),
       ]);
     // Se o churn falhou, marca pro getClients() NÃO cachear/snapshotar
     // este resultado (senão clientes que saíram ficariam presos como ativos).
@@ -496,13 +498,15 @@ async function doGetClients(): Promise<Client[]> {
       clients.push(buildClientFromFolderOnly(folder, null));
     }
 
-    // Decora cada cliente com info de churn (se houver)
+    // Decora cada cliente com info de churn (se houver) + contagem de notas
     for (const c of clients) {
       const ev = churnIndex.get(c.id);
       if (ev) {
         c.isChurned = true;
         c.lastChurnEvent = ev;
       }
+      const notes = noteCounts.get(c.id);
+      if (notes) c.internalNotesCount = notes;
     }
 
     // Ordenar: críticos primeiro, depois por nome

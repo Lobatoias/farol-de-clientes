@@ -171,3 +171,45 @@ create table if not exists clients_snapshot (
 );
 
 alter table clients_snapshot disable row level security;
+
+-- === Notas internas do time (não vão pro cliente) ====================
+-- Anotação rápida por cliente ("Paulo liga amanhã") sem abrir o ClickUp.
+create table if not exists client_notes (
+  id bigserial primary key,
+  task_id text not null,
+  body text not null,
+  author text,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_client_notes_task on client_notes (task_id, created_at desc);
+alter table client_notes disable row level security;
+
+-- === Histórico de mudanças do Farol ==================================
+-- Registra quando/de→para o farol mudou + motivo opcional. Alimenta a
+-- linha do tempo de saúde do cliente e a tendência.
+create table if not exists farol_history (
+  id bigserial primary key,
+  task_id text not null,
+  from_status text,
+  to_status text not null,
+  reason text,
+  changed_at timestamptz not null default now()
+);
+create index if not exists idx_farol_history_task on farol_history (task_id, changed_at desc);
+alter table farol_history disable row level security;
+
+-- === Snapshots diários de métricas (comparação histórica) ============
+-- 1 linha por dia, upsert pelo /api/ping. Acumula MRR/contagens ao longo
+-- do tempo pra ver tendência mês a mês (churn vem de churn_events).
+create table if not exists metric_snapshots (
+  snapshot_date date primary key,
+  active_clients integer not null default 0,
+  active_mrr numeric not null default 0,
+  red_count integer not null default 0,
+  yellow_count integer not null default 0,
+  green_count integer not null default 0,
+  churned_total integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+alter table metric_snapshots disable row level security;

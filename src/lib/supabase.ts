@@ -58,6 +58,35 @@ export interface ContentRow {
   updated_at: string;
 }
 
+export interface ClientNoteRow {
+  id: number;
+  task_id: string;
+  body: string;
+  author: string | null;
+  created_at: string;
+}
+
+export interface FarolHistoryRow {
+  id: number;
+  task_id: string;
+  from_status: string | null;
+  to_status: string;
+  reason: string | null;
+  changed_at: string;
+}
+
+export interface MetricSnapshotRow {
+  snapshot_date: string; // YYYY-MM-DD
+  active_clients: number;
+  active_mrr: number;
+  red_count: number;
+  yellow_count: number;
+  green_count: number;
+  churned_total: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface ChurnRow {
   id: number;
   task_id: string;

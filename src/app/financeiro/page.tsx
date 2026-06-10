@@ -1,12 +1,14 @@
 import { DollarSign, Lock } from "lucide-react";
 import { getClients, isUsingMockData } from "@/lib/clients";
 import { loadAllChurnEvents } from "@/lib/churn";
-import { buildChurnBuckets, groupByReason } from "@/lib/churn-analytics";
+import { buildChurnBuckets, groupByReason, churnByMonth } from "@/lib/churn-analytics";
+import { loadMetricSnapshots, snapshotsByMonth } from "@/lib/metric-snapshots";
 import { FinanceiroEditor } from "@/components/financeiro-editor";
 import { SourceBanner } from "@/components/source-banner";
 import { NichoBreakdown } from "@/components/nicho-breakdown";
 import { LTVSection } from "@/components/ltv-section";
 import { ChurnSummary } from "@/components/churn-summary";
+import { HistoricalComparison } from "@/components/historical-comparison";
 
 export const metadata = { title: "Financeiro" };
 
@@ -14,9 +16,10 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function FinanceiroPage() {
-  const [allClients, churnEvents] = await Promise.all([
+  const [allClients, churnEvents, snapshots] = await Promise.all([
     getClients(),
     loadAllChurnEvents(),
+    loadMetricSnapshots(),
   ]);
   // Métricas (LTV, NichoBreakdown, editor) excluem clientes que já saíram.
   // Strip meetingNotes — financeiro não exibe, e payload RSC fica grande à toa.
@@ -33,6 +36,18 @@ export default async function FinanceiroPage() {
       )
     : [];
   const byReasonLast12mo = groupByReason(eventsLast12mo);
+
+  // Comparação histórica: saídas por mês (retroativo) + MRR mês a mês (snapshots)
+  const churnMonths = churnByMonth(churnEvents, 6);
+  const monthlyMrr = snapshotsByMonth(snapshots).map(({ ym, snapshot }) => {
+    const [, m] = ym.split("-");
+    const labels = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+    return {
+      ym,
+      label: `${labels[Number(m) - 1]}/${ym.slice(2, 4)}`,
+      activeMrr: snapshot.activeMrr,
+    };
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-8">
@@ -62,6 +77,8 @@ export default async function FinanceiroPage() {
       </div>
 
       <LTVSection clients={clients} />
+
+      <HistoricalComparison churnMonths={churnMonths} monthlyMrr={monthlyMrr} />
 
       <ChurnSummary
         buckets={buckets}

@@ -23,6 +23,10 @@ import {
 } from "@/components/timeline-section";
 import { MeetingNotes } from "@/components/meeting-notes";
 import { MeetingDatesEditor } from "@/components/meeting-dates-editor";
+import { InternalNotes } from "@/components/internal-notes";
+import { FarolHistory } from "@/components/farol-history";
+import { listClientNotes } from "@/lib/client-notes";
+import { loadFarolHistory } from "@/lib/farol-history";
 import { ClientChurnSection } from "@/components/client-churn-section";
 import { ClientContentsSection } from "@/components/client-contents-section";
 import { listContentsByClient } from "@/lib/contents";
@@ -48,9 +52,11 @@ export default async function ClientDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [client, contents] = await Promise.all([
+  const [client, contents, internalNotes, farolHistory] = await Promise.all([
     getClientById(id),
     listContentsByClient(id),
+    listClientNotes(id),
+    loadFarolHistory(id),
   ]);
   if (!client) notFound();
 
@@ -204,31 +210,20 @@ export default async function ClientDetailPage({
 
         {/* Side */}
         <div className="lg:col-span-2 space-y-4 animate-fade-up stagger-5">
-          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 transition-all hover:shadow-md">
-            <h4 className="text-xs uppercase tracking-wide text-[color:var(--muted-foreground)] font-semibold mb-3">
-              Histórico de status
-            </h4>
-            <div className="flex items-center gap-2">
-              {client.previousStatus && (
-                <>
-                  <StatusBadge status={client.previousStatus} size="sm" />
-                  <span className="text-[color:var(--muted-foreground)]">→</span>
-                </>
-              )}
-              <StatusBadge status={client.status} size="sm" />
-              <span className="text-xs text-[color:var(--muted-foreground)] ml-auto">
-                {client.previousStatus
-                  ? `mudou ${formatRelative(client.statusChangedAt)}`
-                  : `estável há ${formatRelative(client.statusChangedAt)}`}
-              </span>
-            </div>
-          </div>
+          <FarolHistory
+            clientId={client.id}
+            currentStatus={client.status}
+            statusChangedAt={client.statusChangedAt}
+            history={farolHistory}
+          />
 
           <MeetingDatesEditor
             clientId={client.id}
             lastMeetingAt={client.lastMeetingAt}
             nextMeetingAt={client.nextMeetingAt}
           />
+
+          <InternalNotes clientId={client.id} initialNotes={internalNotes} />
         </div>
       </div>
 

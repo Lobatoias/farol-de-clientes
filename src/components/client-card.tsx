@@ -6,6 +6,7 @@ import {
   Ticket,
   ArrowRight,
   AlertCircle,
+  StickyNote,
 } from "lucide-react";
 import type { Client } from "@/lib/types";
 import { StatusBadge } from "./status-badge";
@@ -158,6 +159,15 @@ export function ClientCard({ client }: ClientCardProps) {
             <span className="flex items-center gap-1">
               <Ticket className="size-3" />
               {client.openTickets} task{client.openTickets > 1 ? "s" : ""}
+            </span>
+          )}
+          {(client.internalNotesCount ?? 0) > 0 && (
+            <span
+              className="flex items-center gap-1 text-amber-600 dark:text-amber-400"
+              title={`${client.internalNotesCount} nota(s) interna(s) do time`}
+            >
+              <StickyNote className="size-3" />
+              {client.internalNotesCount}
             </span>
           )}
           {degraded && (

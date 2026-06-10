@@ -119,6 +119,33 @@ export interface ClientEvent {
   commentCount?: number;
 }
 
+export interface ClientNote {
+  id: number;
+  taskId: string;
+  body: string;
+  author?: string;
+  createdAt: string; // ISO
+}
+
+export interface FarolChange {
+  id: number;
+  taskId: string;
+  fromStatus?: Status;
+  toStatus: Status;
+  reason?: string;
+  changedAt: string; // ISO
+}
+
+export interface MetricSnapshot {
+  date: string; // YYYY-MM-DD
+  activeClients: number;
+  activeMrr: number;
+  redCount: number;
+  yellowCount: number;
+  greenCount: number;
+  churnedTotal: number;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -175,6 +202,9 @@ export interface Client {
   isChurned?: boolean;
   /** Última saída registrada (snapshot do momento). */
   lastChurnEvent?: ChurnEvent;
+
+  /** Quantas notas internas do time existem (badge no card). */
+  internalNotesCount?: number;
 }
 
 export interface AIInsight {

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { setFarol } from "@/lib/clickup";
 import { getClientById, invalidateClientsCache } from "@/lib/clients";
 import { notifyCriticalClient } from "@/lib/chatwoot";
+import { recordFarolChange } from "@/lib/farol-history";
 import type { Status } from "@/lib/types";
 
 interface RouteContext {
@@ -46,6 +47,10 @@ export async function POST(request: Request, context: RouteContext) {
     const previousStatus = previousClient?.status;
 
     await setFarol(id, status);
+    // Registra a mudança no histórico (só quando a cor realmente muda).
+    if (previousStatus !== status) {
+      void recordFarolChange(id, previousStatus, status);
+    }
     invalidateClientsCache();
     revalidatePath("/");
     revalidatePath(`/cliente/${id}`);

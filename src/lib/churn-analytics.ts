@@ -127,6 +127,51 @@ export function groupByReason(events: ChurnEvent[]): ChurnByReason[] {
     .sort((a, b) => b.count - a.count);
 }
 
+export interface ChurnMonth {
+  ym: string; // YYYY-MM
+  label: string; // "jun/26"
+  count: number;
+  monthlyRevenueLost: number;
+}
+
+const MONTH_PT = [
+  "jan", "fev", "mar", "abr", "mai", "jun",
+  "jul", "ago", "set", "out", "nov", "dez",
+];
+
+/**
+ * Saídas agrupadas por mês, nos últimos `monthsBack` meses (inclui meses
+ * sem saída pra a linha do tempo não ter buracos). Dados retroativos —
+ * vêm dos churn_events que já existem.
+ */
+export function churnByMonth(
+  events: ChurnEvent[],
+  monthsBack = 6
+): ChurnMonth[] {
+  const now = new Date();
+  const months: ChurnMonth[] = [];
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    months.push({
+      ym,
+      label: `${MONTH_PT[d.getMonth()]}/${String(d.getFullYear()).slice(2)}`,
+      count: 0,
+      monthlyRevenueLost: 0,
+    });
+  }
+  const index = new Map(months.map((m) => [m.ym, m]));
+  for (const e of events) {
+    const ym = e.churnedAt.slice(0, 7);
+    const bucket = index.get(ym);
+    if (bucket) {
+      bucket.count += 1;
+      bucket.monthlyRevenueLost += e.monthlyRevenueAtTime ?? 0;
+    }
+  }
+  return months;
+}
+
 export interface CsmStat {
   csm: string;
   /** Clientes ativos sob a gestão hoje. */
