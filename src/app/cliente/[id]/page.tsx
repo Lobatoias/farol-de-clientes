@@ -22,6 +22,7 @@ import {
   OpenTicketsTileSkeleton,
 } from "@/components/timeline-section";
 import { MeetingNotes } from "@/components/meeting-notes";
+import { MeetingDatesEditor } from "@/components/meeting-dates-editor";
 import { ClientChurnSection } from "@/components/client-churn-section";
 import { ClientContentsSection } from "@/components/client-contents-section";
 import { listContentsByClient } from "@/lib/contents";
@@ -223,29 +224,11 @@ export default async function ClientDetailPage({
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--card)] p-5 space-y-3 text-sm transition-all hover:shadow-md">
-            <h4 className="text-xs uppercase tracking-wide text-[color:var(--muted-foreground)] font-semibold">
-              Reuniões
-            </h4>
-            <div className="flex items-center gap-2">
-              <Calendar className="size-3.5 text-[color:var(--muted-foreground)]" />
-              <span>
-                Última:{" "}
-                <span className="font-medium">
-                  {client.lastMeetingAt ? formatRelative(client.lastMeetingAt) : "—"}
-                </span>
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CalendarClock className="size-3.5 text-[color:var(--muted-foreground)]" />
-              <span>
-                Próxima:{" "}
-                <span className="font-medium">
-                  {client.nextMeetingAt ? formatDate(client.nextMeetingAt) : "—"}
-                </span>
-              </span>
-            </div>
-          </div>
+          <MeetingDatesEditor
+            clientId={client.id}
+            lastMeetingAt={client.lastMeetingAt}
+            nextMeetingAt={client.nextMeetingAt}
+          />
         </div>
       </div>
 

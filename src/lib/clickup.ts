@@ -308,3 +308,30 @@ export async function setFarol(
   if (!optionId) throw new Error(`Farol invalido: ${status}`);
   await setTaskCustomField(taskId, FAROL_FIELD_ID, optionId);
 }
+
+// IDs dos campos de data de reunião na lista mestre (mesma estratégia
+// do Farol: hardcoded pra evitar round-trip; recriou o campo, atualiza aqui).
+export const MEETING_FIELD_IDS = {
+  last: "2633d49f-e601-45ca-9a49-310266db6957", // "Ultima reuniao"
+  next: "78408689-9bd5-4d45-9740-bf03993d7028", // "Proxima reuniao"
+} as const;
+
+/**
+ * Define (ou limpa, com null) uma data de reunião na task mestre.
+ * `isoDate` no formato YYYY-MM-DD; gravamos meio-dia UTC pra data não
+ * "voltar um dia" em fusos negativos (BRT = UTC-3).
+ */
+export async function setMeetingDate(
+  taskId: string,
+  which: keyof typeof MEETING_FIELD_IDS,
+  isoDate: string | null
+): Promise<void> {
+  const fieldId = MEETING_FIELD_IDS[which];
+  if (isoDate === null) {
+    await ck(`/task/${taskId}/field/${fieldId}`, { method: "DELETE" });
+    return;
+  }
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const ms = Date.UTC(y, m - 1, d, 12);
+  await setTaskCustomField(taskId, fieldId, ms);
+}
