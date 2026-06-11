@@ -189,3 +189,75 @@ Farol:
 *Quando der o ok, a ordem de build é: SQL (tabelas + bucket) → Coletor Fase 1 →
 aba Criativos (leitura) → sinais/filtros → análise IA. Cada fase é deployável e
 testável isolada.*
+
+---
+
+## Anexo A — Seletores reais do DOM (mapeados em 11/jun/2026)
+
+> Inspeção ao vivo na Ad Library (BR, busca "ótica", 29 cards). FB usa classes
+> ofuscadas/aleatórias → **toda a estratégia é por âncora de texto**, não por
+> classe CSS. Validado: 29/29 nos campos-chave, 27/29 na copy.
+
+### URL de busca (já ordena por impressões)
+```
+https://www.facebook.com/ads/library/?active_status=active&ad_type=all
+  &country=BR&q=<termo>&search_type=keyword_unordered&media_type=all
+```
+A própria UI adiciona `&sort_data[mode]=total_impressions&sort_data[direction]=desc`
+— ou seja, **já vem ordenado por impressões desc**. `media_type=video` filtra só vídeo.
+Carrega **sem login e sem banner de cookie**.
+
+### Achar o card root (boundary de cada anúncio)
+A âncora é um `<span>` cujo nó de texto começa com `Identificação da biblioteca:`.
+Do span, **sobe enquanto o ancestral contém exatamente 1 âncora**; para antes de
+juntar 2 cards. Esse é o card root (um `<div>`).
+
+```js
+const anchors = [...document.querySelectorAll('span')].filter(el =>
+  [...el.childNodes].some(n => n.nodeType === 3 &&
+    /Identificação da biblioteca:/.test(n.textContent)));
+
+function cardRoot(anchor) {
+  let el = anchor, last = anchor;
+  while (el.parentElement) {
+    const c = (el.parentElement.textContent.match(/Identificação da biblioteca:/g) || []).length;
+    if (c !== 1) break;
+    last = el.parentElement; el = el.parentElement;
+  }
+  return last;
+}
+```
+
+### Extração de cada campo (do textContent do card root)
+| Campo | Regra | Exemplo |
+|---|---|---|
+| `library_id` | `/Identificação da biblioteca:\s*(\d+)/` | `1331158242453145` |
+| `status` | `/(Ativo\|Inativo)/` | `Ativo` |
+| `first_seen_at` | `/Veiculação iniciada em\s*(.+?)Plataformas/` → parse PT | `21 de mai de 2026` |
+| `variant_count` | `/(\d+)\s+anúncios usam esse criativo/` → N; senão `/várias versões/` → 2; senão 1 | `2`, `2+`, `1` |
+| `format` | tem `<video>` → video; senão `<img referrerpolicy>` → image | 21 vídeo / 8 img |
+| `advertiser` | `<span>` imediatamente antes do texto `Patrocinado` | `GrandVision by Fototica` |
+| `caption` | maior bloco de texto do card que **não** casa com os marcadores de metadado | copy do anúncio |
+| `original_url` | montar: `https://www.facebook.com/ads/library/?id=<library_id>` (não raspar link) | — |
+
+Parse de data PT: `DD de <mmm> de YYYY`, com
+`jan fev mar abr mai jun jul ago set out nov dez` → ISO. `days_running = hoje - first_seen_at`.
+
+### Mídia (atenção)
+- `<video>`: pegar `video.poster` (frame) ou `video.querySelector('source').src`.
+- `<img>`: `img.src` (tem `referrerpolicy` e domínio `scontent`).
+- **São URLs assinadas e expiram** → baixar/gerar thumbnail **na hora**, nunca guardar o link.
+
+### Variantes — 3 formas no card
+1. `N anúncios usam esse criativo e esse texto` → `variant_count = N` (sinal de escala forte).
+2. `Esse anúncio tem várias versões` → `2+` (guardar ≥2).
+3. (nada) → `1`.
+
+### Lazy-load
+A mídia carrega conforme o scroll. O coletor faz **scroll progressivo** e só lê o
+card depois que a mídia daquele card existe no DOM.
+
+### Pegadinhas
+- Textos são **locale-dependente** (PT aqui). Fixar o idioma da conta/perfil do
+  coletor OU tornar as regex multi-idioma.
+- ~7% dos cards não têm copy em texto (texto embutido na imagem) — `caption` fica null, ok.
