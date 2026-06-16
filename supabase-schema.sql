@@ -243,3 +243,29 @@ create index if not exists idx_creative_refs_niche on creative_refs (niche, coll
 create unique index if not exists uq_creative_refs_library
   on creative_refs (library_id) where library_id is not null;
 alter table creative_refs disable row level security;
+
+-- === Multi-usuário + controle de acesso ==============================
+-- Usuários do sistema (login estende o cookie atual; senha-mestra do env
+-- continua valendo como admin de emergência → sem risco de lockout).
+create table if not exists app_users (
+  id            bigserial primary key,
+  email         text unique not null,
+  name          text,
+  password_hash text not null,                 -- bcrypt
+  role          text not null default 'gestor',-- admin | gestor | leitor
+  active        boolean not null default true,
+  created_at    timestamptz not null default now()
+);
+alter table app_users disable row level security;
+
+-- Configuração da conta (1 linha). role_access = seções visíveis por papel
+-- (admin sempre vê tudo). Mudanças valem no próximo login do usuário.
+create table if not exists app_settings (
+  id          integer primary key default 1,
+  language    text not null default 'pt-BR',
+  timezone    text not null default 'America/Sao_Paulo',
+  role_access jsonb not null default '{"gestor":["dashboard","estrategico"],"leitor":["dashboard"]}',
+  updated_at  timestamptz not null default now()
+);
+alter table app_settings disable row level security;
+insert into app_settings (id) values (1) on conflict (id) do nothing;

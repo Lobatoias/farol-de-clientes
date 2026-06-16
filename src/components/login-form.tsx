@@ -11,6 +11,7 @@ interface LoginFormProps {
 
 export function LoginForm({ from }: LoginFormProps) {
   const router = useRouter();
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export function LoginForm({ from }: LoginFormProps) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ email, password }),
         cache: "no-store",
       });
       if (!res.ok) {
@@ -46,6 +47,27 @@ export function LoginForm({ from }: LoginFormProps) {
     >
       <div className="space-y-1.5">
         <label
+          htmlFor="email"
+          className="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] font-semibold"
+        >
+          E-mail
+        </label>
+        <input
+          id="email"
+          type="email"
+          autoComplete="username"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="voce@agencia.com"
+          className="w-full h-11 px-3 rounded-lg border border-[color:var(--border)] bg-[color:var(--background)] text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 transition-all"
+        />
+        <p className="text-[10px] text-[color:var(--muted-foreground)] leading-relaxed">
+          Deixe em branco e use a senha mestra pra entrar como admin.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label
           htmlFor="password"
           className="text-xs uppercase tracking-wider text-[color:var(--muted-foreground)] font-semibold"
         >
@@ -54,7 +76,6 @@ export function LoginForm({ from }: LoginFormProps) {
         <input
           id="password"
           type="password"
-          autoFocus
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}

@@ -2,18 +2,23 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Lightbulb, LayoutDashboard, Compass, DollarSign, UserMinus, LogOut } from "lucide-react";
+import { Lightbulb, LayoutDashboard, Compass, DollarSign, UserMinus, LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "@/components/command-palette";
+import type { Role, Section } from "@/lib/session";
 
-const items = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/estrategico", label: "Estratégico", icon: Compass },
-  { href: "/financeiro", label: "Financeiro", icon: DollarSign },
-  { href: "/saidas", label: "Saídas", icon: UserMinus },
+const items: { href: string; label: string; icon: typeof LayoutDashboard; section: Section }[] = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard, section: "dashboard" },
+  { href: "/estrategico", label: "Estratégico", icon: Compass, section: "estrategico" },
+  { href: "/financeiro", label: "Financeiro", icon: DollarSign, section: "financeiro" },
+  { href: "/saidas", label: "Saídas", icon: UserMinus, section: "saidas" },
 ];
 
-export function TopNav() {
+interface TopNavProps {
+  session?: { name: string; role: Role; sections: Section[] } | null;
+}
+
+export function TopNav({ session }: TopNavProps) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -23,8 +28,14 @@ export function TopNav() {
     router.refresh();
   }
 
-  // Esconde nav na página de login
-  if (pathname === "/login") return null;
+  // Esconde nav na página de login e na aprovação pública (cliente externo)
+  if (pathname === "/login" || pathname.startsWith("/aprovacao")) return null;
+
+  const isAdmin = session?.role === "admin";
+  // Admin vê tudo; demais só as seções permitidas. Sem sessão (dev sem senha) mostra tudo.
+  const visible = items.filter(
+    (it) => !session || isAdmin || session.sections.includes(it.section)
+  );
   return (
     <header className="border-b border-[color:var(--border)] bg-[color:var(--card)] sticky top-0 z-40 backdrop-blur-md supports-[backdrop-filter]:bg-[color:var(--card)]/85">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3 sm:gap-6">
@@ -38,7 +49,7 @@ export function TopNav() {
           <span className="hidden sm:inline">Farol de Clientes</span>
         </Link>
         <nav className="flex items-center gap-1">
-          {items.map((item) => {
+          {visible.map((item) => {
             const Icon = item.icon;
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
@@ -68,6 +79,29 @@ export function TopNav() {
         </nav>
         <div className="flex items-center gap-2 sm:gap-3">
           <CommandPalette />
+          {isAdmin && (
+            <Link
+              href="/config"
+              aria-current={pathname.startsWith("/config") ? "page" : undefined}
+              title="Configurações"
+              className={cn(
+                "size-8 rounded-lg grid place-items-center transition-colors",
+                pathname.startsWith("/config")
+                  ? "bg-[color:var(--muted)] text-[color:var(--foreground)]"
+                  : "text-[color:var(--muted-foreground)] hover:text-[color:var(--foreground)] hover:bg-[color:var(--muted)]/60"
+              )}
+            >
+              <Settings className="size-4" />
+            </Link>
+          )}
+          {session?.name && (
+            <span
+              className="hidden md:inline text-xs text-[color:var(--muted-foreground)] max-w-[120px] truncate"
+              title={session.name}
+            >
+              {session.name}
+            </span>
+          )}
           <button
             type="button"
             onClick={handleLogout}

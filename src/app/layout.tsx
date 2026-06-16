@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TopNav } from "@/components/top-nav";
+import { getSession } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,18 +22,22 @@ export const metadata: Metadata = {
   description: "Hub interno de gestão de clientes com semáforo de saúde e IA assistente.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getSession();
+  const navSession = session
+    ? { name: session.name, role: session.role, sections: session.sections }
+    : null;
   return (
     <html
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <TopNav />
+        <TopNav session={navSession} />
         <main className="flex-1">{children}</main>
       </body>
     </html>
