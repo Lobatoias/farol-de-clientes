@@ -33,15 +33,22 @@ export interface SessionData {
   exp: number; // epoch ms
 }
 
-const SECRET =
-  process.env.FAROL_SECRET || process.env.FAROL_PASSWORD || "dev-secret-change-me";
+// Lido NA HORA (não no load do módulo): garante o mesmo valor no edge
+// (middleware) e no node (rotas), evitando assinatura que não bate.
+function getSecret(): string {
+  return (
+    process.env.FAROL_SECRET ||
+    process.env.FAROL_PASSWORD ||
+    "dev-secret-change-me"
+  );
+}
 
 /**
  * Assinatura determinística (FNV-1a duplo). Não é criptografia forte, mas
  * impede forjar o papel sem conhecer o SECRET. Roda em edge e node.
  */
 export function signValue(value: string): string {
-  const data = value + "::" + SECRET;
+  const data = value + "::" + getSecret();
   let h1 = 0xcbf29ce4;
   let h2 = 0x84222325;
   for (let i = 0; i < data.length; i++) {

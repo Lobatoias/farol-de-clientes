@@ -24,11 +24,9 @@ export async function POST(request: Request) {
 
   const exp = Date.now() + sessionMaxAgeMs();
 
-  // Sem e-mail → senha-mestra (admin)
-  if (!email) {
-    if (!checkMasterPassword(password)) {
-      return NextResponse.json({ error: "Senha incorreta" }, { status: 401 });
-    }
+  // 1) Senha-mestra SEMPRE entra como admin — mesmo se o navegador tiver
+  // preenchido o e-mail por autofill. Garante que ninguém fica trancado fora.
+  if (checkMasterPassword(password)) {
     await setSession({
       uid: 0,
       name: "Admin",
@@ -39,8 +37,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, role: "admin" });
   }
 
-  // Com e-mail → usuário do Supabase
-  const user = await verifyUser(email, password);
+  // 2) Senão, login por usuário (precisa de e-mail).
+  const user = email ? await verifyUser(email, password) : null;
   if (!user) {
     return NextResponse.json(
       { error: "E-mail ou senha incorretos" },
